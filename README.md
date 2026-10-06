@@ -18,12 +18,13 @@ NEStalgia 不是"又一个 Web 应用"——它是一台**用软件精确重建�
 | **CPU** (`src/core/cpu.mjs`) | MOS 6502 全部 151 条官方指令 + 稳定非法指令（SLO/RLA/SRE/RRA/SAX/LAX/DCP/ISB/ANC/ALR/ARR/SBX）+ 不稳定 opcode 近似，页跨越周期惩罚、`JMP ($xxFF)` 页环绕 bug、NMI/IRQ 边沿注入、BCD（功能测试用，NES 上禁用） |
 | **PPU** (`src/core/ppu.mjs`) | 逐点时序（341×262）、loopy v/t/x/w 滚动寄存器、背景取指流水线（NT/AT/双位面 8 点相位）、精灵求值（8 精灵限制、8×16、翻转、优先级、sprite-0 命中）、调色板镜像怪癖、4 种镜像模式、程序化 NTSC 调色板 |
 | **APU** (`src/core/apu.mjs`) | 双脉冲（占空比/包络/滑音/长度计数器）、三角波（线性计数器）、噪声（15 位 LFSR）、DMC 增量调制（经总线取样本）、4/5 步帧序列器与帧 IRQ、NESdev 混音公式，~47kHz 输出 |
-| **卡带** (`src/core/cart.mjs`) | iNES 解析（含 NES 2.0 检测）、Mapper **0 (NROM) / 1 (MMC1) / 2 (UxROM) / 3 (CNROM) / 7 (AxROM)**、电池存档 PRG-RAM、CHR-RAM |
+| **卡带** (`src/core/cart.mjs`) | iNES 解析（含 NES 2.0 检测）、Mapper **0 / 1 / 2 / 3 / 4 (MMC3+扫描线IRQ) / 7 / 11 / 34 / 66**（约覆盖 85% 游戏库）、电池存档 PRG-RAM、CHR-RAM |
 | **主机** (`src/core/console.mjs`) | 总线仲裁、PPU:CPU 3:1 点时序、OAM DMA（513 周期停顿）、手柄移位寄存器、整机确定性存档 |
 | **汇编器** (`tools/asm.mjs`) | 两遍扫描、表达式求值器（`<` `>` 取低/高字节、`<<` `>>`、位运算）、正向引用、编码表直接派生自 CPU 核心（永不失配）、iNES 构建器 |
 | **自制游戏** (`tools/game.mjs`) | 《STARFALL》——完整 6502 汇编游戏：NMI 主循环、LFSR 随机数、碰撞/无敌帧/计分、APU 音效。由本汇编器汇编，在本模拟器上运行 |
-| **Web 前端** (`public/`) | 游戏库（IndexedDB）、60.1Hz 帧步进、AudioWorklet 音频、手柄 API、即时存档/读档、**按住 Backspace 倒带**、CRT 滤镜、截图导出 |
-| **调试器** (`public/js/debugger.mjs`) | 实时反汇编（点击行设断点）、CPU 寄存器/标志、内存十六进制查看、图案表/命名表/OAM/调色板可视化、单步/帧步进 |
+| **Web 前端** (`public/`) | 游戏库（IndexedDB）、60.1Hz 帧步进、AudioWorklet 音频、手柄 API、即时存档/读档、**按住 Backspace 倒带**、CRT 滤镜、截图导出、**WebM 录像（画面+声音）** |
+| **汇编工作台** (`public/js/playground.mjs`) | 浏览器内编写 6502 汇编 → 自研汇编器现场编译 → 本机模拟器即刻运行；三个内置演示程序（HELLO / BOUNCE / INPUT）同时是无头流水线测试 |
+| **调试器** (`public/js/debugger.mjs`) | 实时反汇编（点击行设断点）、**内存写入观察点**（命中显示地址/值/PC）、CPU 寄存器/标志、内存十六进制查看、图案表/命名表/OAM/调色板可视化、单步/帧步进 |
 
 **代码量约 9,000 行，npm 依赖：0 个。**
 
@@ -44,7 +45,8 @@ node scripts/server.mjs
 ### 测试
 
 ```bash
-node scripts/run-tests.mjs     # 98 项单元/集成测试
+node scripts/run-tests.mjs     # 117 项单元/集成测试
+node scripts/bench.mjs         # 性能基准（约 430fps 无头运行，7 倍实时）
 node scripts/klaus.mjs         # Klaus Dormann 6502 功能测试（需 tmp/klaus.bin，见脚本头注释）
 node tools/build-roms.mjs      # 重新构建 roms/ 与 docs/screenshots/
 ```
@@ -106,7 +108,7 @@ docs/        DEMO.md 演示手册 · screenshots/ 全部为真实模拟输出
 
 ## 已知限制
 
-- Mapper 覆盖 0/1/2/3/7（约占 NES 游戏库 55%）——SMB、Contra、Duck Tales、Zelda 级别的经典卡带均可运行
+- Mapper 覆盖 0/1/2/3/4/7/11/34/66（约 85%）——SMB、SMB3、Contra、Duck Tales、Zelda 级别的经典卡带均可运行；MMC3 的 A12 检测采用每扫描线一次的近似
 - DMC 采样播放未模拟 CPU 取指停顿（音高/时长正确，极端时序敏感的少数游戏可能受影响）
 - PPU 精确到点但非"cycle-by-cycle 像素输出"级别（sprite overflow bug 的硬件怪癖未模拟）
 - 不支持 PAL/区域检测；帧率恒为 NTSC 60.0988Hz

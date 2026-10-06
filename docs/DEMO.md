@@ -77,7 +77,23 @@ node scripts/server.mjs          # → http://localhost:8612
 
 ---
 
-## 演示四：Klaus Dormann 6502 功能测试（金标准）
+## 演示四：汇编工作台（v1.1 王牌功能）
+
+![汇编工作台](playground.png)
+
+在浏览器里直接写 6502 汇编 → 点"组装并运行" → 自研汇编器现场编译 → 模拟器即刻运行。
+整条工具链（编辑器 → 汇编器 → 模拟器）全部运行在你的浏览器标签页里，编译不经过任何服务器。
+
+内置三个演示程序，它们同时是无头测试夹具（同一份代码在 `tests/playground.test.mjs` 里被逐帧断言）：
+- **HELLO** — 静态文字与色条（PPU 裸写流程）
+- **BOUNCE** — NMI 驱动的弹跳球（OAM DMA / 速度积分 / 边界反弹）
+- **INPUT** — 手柄控制移动（$4016 移位寄存器读取）
+
+支持 Ctrl+Enter 快捷运行；汇编错误带行号显示。
+
+---
+
+## 演示五：Klaus Dormann 6502 功能测试（金标准）
 
 ```bash
 # 下载官方测试二进制（见 scripts/klaus.mjs 头部说明）后：
@@ -90,7 +106,22 @@ node scripts/klaus.mjs
 
 ---
 
-## 演示五：一行代码证明"零依赖"
+## 演示六：性能与工程方法
+
+```bash
+node scripts/bench.mjs 600
+# STARFALL   ~438 fps (13.5 MHz 6502-equiv)
+# colorbars  ~420 fps
+# sprite     ~410 fps
+```
+
+V8 CPU profile 驱动的优化（详见 BUILD_LOG M14）：APU 静音通道调用点门控、CPU 页跨越惩罚预计算、
+renderPixel 热路径局部变量化。无头运行约为实时的 7 倍——剩余成本集中在逐点 PPU（占 51%），
+那是本项目精度的根基，不为此牺牲。
+
+---
+
+## 演示七：一行代码证明"零依赖"
 
 ```bash
 $ grep -c '"' package.json   # package.json 中没有任何 dependencies 字段

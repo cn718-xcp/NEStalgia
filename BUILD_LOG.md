@@ -37,3 +37,10 @@
 - M13: PPU 颜色强调位（$2001 bit5-7 → 8 组惰性调色板变体）；顺带修正精灵左裁剪位为 bit2（此前误用 bit0 与灰度位冲突）。
 - M14: 新增 scripts/bench.mjs。V8 cpu-profile 实测：PPU tick 35.6% + renderPixel 15.7%、console 帧循环 10.5%、APU 12.6%、CPU 10%。优化（APU 静音通道门控上提到调用点、CPU 页跨越惩罚预计算进 opcode 表、renderPixel 局部变量/内联调色板镜像）：基线 ~400fps → ~430-445fps（±5% 方差）。结论：逐点 PPU（精度核心）占 51% 是该架构的性能地板，~430fps ≈ 7 倍实时，进一步收益需扫描线批处理重构，风险收益不成比例，保留现状。
 - 附带修复：console.dmaPending 显式初始化（此前依赖 undefined>=0===false 的偶然行为）。
+
+### 2026-10-06 M15-M18 迭代收尾
+- M15: 调试器内存写入观察点（console.watchWrites 钩子 + UI 列表 + 命中显示 addr/val/PC 并自动暂停）。测试用 STARFALL 的 frameReady（colorbars 不写零页）。
+- M16: 浏览器汇编工作台——汇编器迁至 src/lib/asm.mjs（浏览器可 /lib/ 直连），共享字库 src/lib/font.mjs，演示程序 src/lib/demos.mjs（HELLO/BOUNCE/INPUT，同一份代码兼作无头测试）。工作台运行实测 59fps。
+- M17: WebM 录像（canvas.captureStream + 音频 MediaStreamDestination，vp9/opus 优先）。实测 2.5s → 47KB。注意：画布暂停时无帧，录像前需运行中。
+- M18: 文档更新 + v1.1.0。
+- E2E 实测记录：调试器观察点命中 $00←$AF（球的 x）并自动暂停；MediaRecorder 0 字节的假故障是测试自身先把游戏暂停了。
