@@ -45,13 +45,14 @@ function makeCHR() {
     rows.forEach((v, r) => { chr[base + r] = v; });
     // color-1 plane only; plane1 stays 0
   }
-  // sprites at $A0+ (pattern table 1 => addr $0800 + tile*16)
+  // sprites at $A0+ live in pattern table 1 (PPU $1000+), matching the
+  // hardware's sprite pattern-table select bit
   const starP0 = [0x18, 0x3C, 0x7E, 0xFF, 0xFF, 0x7E, 0x3C, 0x18];
-  starP0.forEach((v, r) => { chr[0x0800 + 0xA0 * 16 + r] = v; });
+  starP0.forEach((v, r) => { chr[0x1000 + 0xA0 * 16 + r] = v; });
   const shipTop = [0x18, 0x3C, 0x7E, 0xDB, 0xDB, 0x7E, 0x24, 0x00];
-  shipTop.forEach((v, r) => { chr[0x0800 + 0xA2 * 16 + r] = v; });
+  shipTop.forEach((v, r) => { chr[0x1000 + 0xA2 * 16 + r] = v; });
   const shipBot = [0x00, 0x3C, 0x7E, 0xDB, 0xFF, 0xBD, 0x24, 0x66];
-  shipBot.forEach((v, r) => { chr[0x0800 + 0xA3 * 16 + r] = v; });
+  shipBot.forEach((v, r) => { chr[0x1000 + 0xA3 * 16 + r] = v; });
   return chr;
 }
 

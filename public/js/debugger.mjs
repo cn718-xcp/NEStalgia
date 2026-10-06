@@ -224,7 +224,7 @@ export class Debugger {
   renderNametable() {
     const cv = document.getElementById('dbg-nametable');
     const ctx = cv.getContext('2d');
-    const img = ctx.createImageData(128, 120); // 2 NTs side by side, half scale
+    const img = ctx.createImageData(256, 120); // 2 NTs side by side, quarter-scale tiles
     const u32 = new Uint32Array(img.data.buffer);
     for (let nt = 0; nt < 2; nt++) {
       for (let ty = 0; ty < 30; ty++) {
@@ -236,14 +236,12 @@ export class Debugger {
           for (let py = 0; py < 8; py += 2) {
             const lo = this.c.cart.ppuRead(tile * 16 + py);
             const hi = this.c.cart.ppuRead(tile * 16 + py + 8);
-            for (let px = 0; px < 8; px++) {
+            for (let px = 0; px < 8; px += 2) {
               const v = (((lo >> (7 - px)) & 1) | (((hi >> (7 - px)) & 1) << 1));
               const color = v ? this.c.ppu.paletteRead(pal + v) : 0x0F;
-              for (let dy = 0; dy < 2; dy++) {
-                const dx = nt * 64 + (tx >> 1) * 8 + px;
-                const dy2 = (ty >> 1) * 8 + py + dy;
-                if (dx < 128 && dy2 < 120) u32[dy2 * 128 + dx] = NES_PALETTE[color];
-              }
+              const dx = nt * 128 + tx * 4 + (px >> 1);
+              const dy = ty * 4 + (py >> 1);
+              u32[dy * 256 + dx] = NES_PALETTE[color];
             }
           }
         }

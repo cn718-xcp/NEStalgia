@@ -12,6 +12,11 @@ const $ = (id) => document.getElementById(id);
 const audio = new AudioManager();
 const player = new Player($('screen'), audio);
 const debuggerPanel = new Debugger(player);
+setInterval(() => {
+  if (!player.console) return;
+  $('st-fps').textContent = `${player.fps} fps`;
+  $('st-frame').textContent = `frame ${player.frameCount}`;
+}, 500);
 player.onFrame = (c) => {
   if (debuggerPanel.visible && debuggerPanel.breakpoints.size) debuggerPanel.frameHook();
   if (debuggerPanel.visible && c.ppu.frameCount % 15 === 0) debuggerPanel.refresh();
@@ -58,7 +63,10 @@ async function showPlayer(id) {
   player.render();
   const thumb = $('screen').toDataURL('image/png');
   await putRom({ ...metaOf(rec), thumb }, rec.data);
-  player.reset();
+  // enter play immediately (the card click counts as the audio gesture)
+  await audio.start();
+  player.play();
+  $('btn-pause').textContent = '⏸ 暂停';
 }
 
 function hasBattery(rom) { return (rom[6] & 0x02) !== 0; }

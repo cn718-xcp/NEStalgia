@@ -324,7 +324,7 @@ export class PPU {
         let addrLo;
         if (h === 8) {
           const row2 = (attr & 0x80) ? 7 - row : row; // vertical flip
-          addrLo = (this.control & 0x08) * 0x100 + tile * 16 + row2;
+          addrLo = ((this.control & 0x08) ? 0x1000 : 0) + tile * 16 + row2;
         } else {
           let effRow = row;
           if (attr & 0x80) effRow = 15 - row; // vertical flip reverses the 16 rows
