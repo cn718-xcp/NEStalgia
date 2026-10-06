@@ -549,7 +549,11 @@ sfxHit:
   RTS
 
 ; ---- screens -------------------------------------------------------------------
+; All VRAM loads happen with rendering OFF: the renderer's v-register updates
+; would otherwise fight the $2006/$2007 writes mid-frame.
 loadTitle:
+  LDA #$00
+  STA PPUMASK
   LDA #<titleData
   STA $FA
   LDA #>titleData
@@ -561,8 +565,12 @@ loadTitle:
   STA state
   STA scoreDirty
   STA frameReady
+  LDA #$1E
+  STA PPUMASK
   RTS
 loadGameOver:
+  LDA #$00
+  STA PPUMASK
   LDA #<overData
   STA $FA
   LDA #>overData
@@ -572,8 +580,12 @@ loadGameOver:
   STA state
   LDA #1
   STA scoreDirty
+  LDA #$1E
+  STA PPUMASK
   RTS
 initPlay:
+  LDA #$00
+  STA PPUMASK
   LDA #$00
   STA score
   STA invuln
@@ -608,6 +620,8 @@ initStars:
   STA scoreDirty
   LDA #$01
   STA state
+  LDA #$1E
+  STA PPUMASK
   RTS
 
 clearOAM:
