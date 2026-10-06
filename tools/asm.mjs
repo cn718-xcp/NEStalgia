@@ -40,6 +40,9 @@ export function assemble(src) {
       rest = rest.slice(m[0].length);
     }
     if (!rest) return;
+    // constant definition: NAME = expr
+    const eqm = rest.match(/^([A-Za-z_.][\w.]*)\s*=\s*(.+)$/);
+    if (eqm) { items.push({ kind: 'const', name: eqm[1], arg: eqm[2].trim(), line: idx + 1 }); return; }
     if (rest.startsWith('.')) {
       const m = rest.match(/^\.(\w+)\s*(.*)$/);
       items.push({ kind: 'dir', dir: m[1].toLowerCase(), arg: m[2].trim(), line: idx + 1 });
@@ -90,6 +93,7 @@ export function assemble(src) {
   let pc = 0;
   const laid = [];
   for (const it of items) {
+    if (it.kind === 'const') { symbols[it.name] = evalExpr(it.arg, symbols); continue; }
     if (it.kind === 'label') { symbols[it.name] = pc; continue; }
     if (it.kind === 'dir') {
       if (it.dir === 'org') { pc = evalExpr(it.arg, symbols); it.addr = pc; laid.push({ ...it, size: 0 }); continue; }
