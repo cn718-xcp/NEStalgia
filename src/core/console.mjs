@@ -17,6 +17,9 @@ export class Console {
     this.strobe = 0;
     this.shiftIdx = [0, 0];
     this.prevNmi = false;
+    this.watchWrites = new Set();
+    this.onWatchHit = null;
+    this.ppu.onA12 = this.cart.clockIrq ? () => this.cart.clockIrq() : null;
     this.reset();
   }
 
@@ -28,6 +31,9 @@ export class Console {
     this.controllers = [0, 0];
     this.strobe = 0;
     this.shiftIdx = [0, 0];
+    this.watchWrites = new Set();
+    this.onWatchHit = null;
+    this.ppu.onA12 = this.cart.clockIrq ? () => this.cart.clockIrq() : null;
     this.cpu.reset();
   }
 
@@ -46,7 +52,12 @@ export class Console {
   cpuWrite(addr, v) {
     addr &= 0xFFFF;
     v &= 0xFF;
-    if (addr < 0x2000) { this.ram[addr & 0x7FF] = v; return; }
+    if (addr < 0x2000) {
+      const a = addr & 0x7FF;
+      this.ram[a] = v;
+      if (this.watchWrites.size !== 0 && this.watchWrites.has(a) && this.onWatchHit) this.onWatchHit(a, v);
+      return;
+    }
     if (addr < 0x4000) { this.ppu.cpuWrite(addr & 7, v); return; }
     if (addr === 0x4014) { this.dmaPending = v; return; }
     if (addr === 0x4016) {
@@ -84,7 +95,7 @@ export class Console {
     const nmi = this.ppu.nmiLine;
     if (nmi && !this.prevNmi) this.cpu.nmiPending = true;
     this.prevNmi = nmi;
-    const irq = this.apu ? this.apu.irqLine : false;
+    const irq = (this.apu && this.apu.irqLine) || this.cart.irqLine || false;
     if (irq && !this.prevIrq) { /* level-triggered; cpu samples each step */ }
     this.prevIrq = irq;
     this.cpu.irqLine = irq;

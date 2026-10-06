@@ -258,6 +258,10 @@ export class PPU {
     if ((visible || prerender) && dot === 257) {
       this.evaluateSprites((line + 1) % 262);
     }
+    // MMC3-style scanline IRQ hook (approximate PPU A12 rising edge)
+    if (fetchLine && renderingEnabled && dot === 260 && this.onA12) {
+      this.onA12();
+    }
 
     // pixel output
     if (visible && dot >= 1 && dot <= 256) {

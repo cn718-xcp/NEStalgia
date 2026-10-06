@@ -31,14 +31,16 @@ export class Cartridge {
     this.prgBankCount = Math.max(1, prgBlocks); // in 16KB units
     this.chrBankCount = Math.max(1, chrBlocks);
     this.prgBankL = 0;   // UxROM switchable bank (byte offset)
-    this.prgBank32 = 0;  // AxROM switchable bank (byte offset)
-    this.chrBank6 = 0;   // CNROM CHR bank
+    this.prgBank32 = 0;  // AxROM/GNROM/BNROM switchable bank (byte offset)
+    this.chrBank6 = 0;   // CNROM/GNROM CHR bank
+    this.chrBank11 = 0;  // Color Dreams CHR bank
 
     switch (this.mapperId) {
-      case 0: case 2: case 3: case 7: case 1: break;
-      default: throw new Error(`Unsupported mapper ${this.mapperId} (supported: 0, 1, 2, 3, 7)`);
+      case 0: case 1: case 2: case 3: case 4: case 7: case 11: case 34: case 66: break;
+      default: throw new Error(`Unsupported mapper ${this.mapperId} (supported: 0, 1, 2, 3, 4, 7, 11, 34, 66)`);
     }
     if (this.mapperId === 1) this._mmc1Reset();
+    if (this.mapperId === 4) this._mmc3Reset();
   }
 
   // ---- CPU space -----------------------------------------------------------
@@ -63,6 +65,10 @@ export class Cartridge {
       }
       case 3: return this.prg[(addr - 0x8000) % this.prg.length];
       case 7: return this.prg[(this.prgBank32 + (addr - 0x8000)) % this.prg.length];
+      case 11: return this.prg[(this.prgBank32 + (addr - 0x8000)) % this.prg.length];
+      case 34: return this.prg[(this.prgBank32 + (addr - 0x8000)) % this.prg.length];
+      case 66: return this.prg[(this.prgBank32 + (addr - 0x8000)) % this.prg.length];
+      case 4: return this._mmc3CpuRead(addr);
       case 1: return this._mmc1CpuRead(addr);
       default: return 0;
     }
@@ -74,6 +80,10 @@ export class Cartridge {
       case 3: this.chrBank6 = v & 0x03; break; // CNROM: 2 bits typical
       case 7: this.prgBank32 = ((v & 0x03) * 32768) % this.prg.length; this.mirroring = (v & 0x10) ? 'S1' : 'S0'; this.hardwired = false; break;
       case 1: this._mmc1Write(addr, v); break;
+      case 4: this._mmc3Write(addr, v); break;
+      case 11: this.chrBank11 = v & 0x0F; this.prgBank32 = ((v >> 4) & 0x03) * 32768; break;
+      case 34: this.prgBank32 = (v & 0x03) * 32768; break; // BNROM (CHR RAM fixed)
+      case 66: this.chrBank6 = v & 0x03; this.prgBank32 = ((v >> 4) & 0x03) * 32768; break;
       default: break;
     }
   }
@@ -94,9 +104,69 @@ export class Cartridge {
         const bank = this.chrBank6 ?? 0;
         return this.chr[((bank * 8192) + addr) % this.chr.length];
       }
+      case 11: return this.chr[((this.chrBank11 * 8192) + addr) % this.chr.length];
+      case 66: return this.chr[((this.chrBank6 * 8192) + addr) % this.chr.length];
+      case 4: return this._mmc3ChrRead(addr);
       case 1: return this._mmc1ChrRead(addr);
       default: return this.chr[addr % this.chr.length];
     }
+  }
+
+  // ---- MMC3 (mapper 4) --------------------------------------------------------
+  _mmc3Reset() {
+    this.mmc3Cmd = 0; this.mmc3Banks = new Uint8Array(8);
+    this.irqLatch = 0; this.irqCounter = 0; this.irqReload = false;
+    this.irqEnable = false; this.irqAsserted = false;
+    this.prgBankL = 0;
+  }
+  _mmc3Write(addr, v) {
+    if (addr <= 0x9FFF) {
+      if ((addr & 1) === 0) {
+        this.mmc3Cmd = v & 0x07;
+        this.mmc3ChrMode = (v & 0x80) !== 0;
+        this.mmc3PrgMode = (v & 0x40) !== 0;
+      } else {
+        this.mmc3Banks[this.mmc3Cmd] = v;
+      }
+    } else if (addr <= 0xBFFF) {
+      this.mirroring = (v & 1) ? 'V' : 'H'; // bit 0: vertical / horizontal
+      this.hardwired = false;
+    } else if (addr <= 0xDFFF) {
+      if ((addr & 1) === 0) { this.irqLatch = v; } else { this.irqReload = true; }
+    } else {
+      if ((addr & 1) === 0) { this.irqEnable = false; this.irqAsserted = false; } // $E000 ack
+      else { this.irqEnable = true; }                                            // $E001 enable
+    }
+  }
+  // PPU A12 rising edge, approximated as once per rendered scanline.
+  clockIrq() {
+    let c = this.irqCounter;
+    if (c === 0 || this.irqReload) { c = this.irqLatch; this.irqReload = false; }
+    c = (c - 1) & 0xFF;
+    this.irqCounter = c;
+    if (c === 0 && this.irqEnable) this.irqAsserted = true;
+  }
+  get irqLine() { return !!this.irqAsserted; }
+  _mmc3CpuRead(addr) {
+    const r6 = this.mmc3Banks[6] & 0x3F, r7 = this.mmc3Banks[7] & 0x3F;
+    const n8 = this.prg.length >> 13; // 8KB banks
+    let bank;
+    if (addr < 0xA000) bank = this.mmc3PrgMode ? (n8 - 2) : r6;
+    else if (addr < 0xC000) bank = r7;
+    else if (addr < 0xE000) bank = this.mmc3PrgMode ? r6 : (n8 - 2);
+    else bank = n8 - 1;
+    return this.prg[(((bank * 8192) + (addr & 0x1FFF)) % this.prg.length)];
+  }
+  _mmc3ChrRead(addr) {
+    let bank, window;
+    if (this.mmc3ChrMode) { // 1KB at $0000, 2KB at $1000
+      if (addr < 0x1000) { bank = this.mmc3Banks[2 + ((addr >> 10) & 3)]; return this.chr[((bank * 1024) + (addr & 0x3FF)) % this.chr.length]; }
+      window = (addr >> 11) & 1; bank = this.mmc3Banks[window];
+      return this.chr[((bank * 2048) + (addr & 0x7FF)) % this.chr.length];
+    }
+    if (addr < 0x1000) { window = (addr >> 11) & 1; bank = this.mmc3Banks[window]; return this.chr[((bank * 2048) + (addr & 0x7FF)) % this.chr.length]; }
+    bank = this.mmc3Banks[2 + ((addr >> 10) & 3)];
+    return this.chr[((bank * 1024) + (addr & 0x3FF)) % this.chr.length];
   }
 
   // ---- MMC1 ------------------------------------------------------------------
@@ -176,8 +246,13 @@ export class Cartridge {
     const s = {
       mirroring: this.mirroring, hardwired: this.hardwired,
       prgBankL: this.prgBankL, prgBank32: this.prgBank32, chrBank6: this.chrBank6 ?? 0,
+      chrBank11: this.chrBank11 ?? 0,
       mmc1Shift: this.mmc1Shift, mmc1Ctrl: this.mmc1Ctrl,
       mmc1Chr0: this.mmc1Chr0, mmc1Chr1: this.mmc1Chr1, mmc1Prg: this.mmc1Prg,
+      mmc3Cmd: this.mmc3Cmd, mmc3Banks: this.mmc3Banks ? [...this.mmc3Banks] : [0,0,0,0,0,0,0,0],
+      mmc3ChrMode: !!this.mmc3ChrMode, mmc3PrgMode: !!this.mmc3PrgMode,
+      irqLatch: this.irqLatch, irqCounter: this.irqCounter,
+      irqReload: !!this.irqReload, irqEnable: !!this.irqEnable, irqAsserted: !!this.irqAsserted,
     };
     if (this.chrRam) s.chr = b64(this.chr);
     return s;
@@ -185,10 +260,18 @@ export class Cartridge {
   fromState(s) {
     this.mirroring = s.mirroring; this.hardwired = s.hardwired;
     this.prgBankL = s.prgBankL; this.prgBank32 = s.prgBank32; this.chrBank6 = s.chrBank6;
+    this.chrBank11 = s.chrBank11;
     this._mmc1Reset();
     this.mmc1Ctrl = s.mmc1Ctrl; this.mmc1Chr0 = s.mmc1Chr0; this.mmc1Chr1 = s.mmc1Chr1; this.mmc1Prg = s.mmc1Prg;
     this.mmc1Shift = s.mmc1Shift;
     this._applyPrg(); this._applyChr(); this._applyMirror();
+    if (this.mapperId === 4) {
+      this.mmc3Cmd = s.mmc3Cmd;
+      this.mmc3Banks = new Uint8Array(s.mmc3Banks);
+      this.mmc3ChrMode = s.mmc3ChrMode; this.mmc3PrgMode = s.mmc3PrgMode;
+      this.irqLatch = s.irqLatch; this.irqCounter = s.irqCounter;
+      this.irqReload = s.irqReload; this.irqEnable = s.irqEnable; this.irqAsserted = s.irqAsserted;
+    }
     if (this.chrRam && s.chr) this.chr.set(unb64(s.chr));
   }
 }
