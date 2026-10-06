@@ -4,26 +4,26 @@
 import { CPU } from './cpu.mjs';
 import { PPU, SCREEN_W, SCREEN_H } from './ppu.mjs';
 import { Cartridge } from './cart.mjs';
+import { APU } from './apu.mjs';
 
 export class Console {
   constructor(rom, { onSave = null } = {}) {
     this.cart = new Cartridge(rom, { onSave });
     this.ppu = new PPU(this.cart);
+    this.apu = new APU();
     this.cpu = new CPU(this, { bcd: false });
     this.ram = new Uint8Array(2048);
-    this.apu = null; // attached in M6; bus writes are tolerated without it
     this.controllers = [0, 0];
     this.strobe = 0;
     this.shiftIdx = [0, 0];
     this.prevNmi = false;
-    this.prevIrq = false;
-    this.dmaPending = -1;
     this.reset();
   }
 
   reset() {
     this.ram.fill(0);
     this.ppu.reset();
+    this.apu = new APU();
     this.cpu = new CPU(this, { bcd: false });
     this.controllers = [0, 0];
     this.strobe = 0;
