@@ -1,7 +1,7 @@
 import { Cartridge } from '../src/core/cart.mjs';
 import { Console } from '../src/core/console.mjs';
 import { NES_PALETTE } from '../src/core/ppu.mjs';
-import { buildINES } from '../tools/asm.mjs';
+import { buildINES } from '../src/lib/asm.mjs';
 import { makeMmc3IrqRom } from '../tools/testroms.mjs';
 import { test, eq, ok } from './harness.mjs';
 

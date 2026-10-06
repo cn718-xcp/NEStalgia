@@ -1,5 +1,5 @@
 import { Cartridge } from '../src/core/cart.mjs';
-import { buildINES } from '../tools/asm.mjs';
+import { buildINES } from '../src/lib/asm.mjs';
 import { test, eq, ok } from './harness.mjs';
 
 function rom({ mapper, prg = 2, chr = 1, mirror = 'H', battery = false, fill }) {

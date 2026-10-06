@@ -2,6 +2,7 @@
 import { Player, BTN } from './player.mjs';
 import { AudioManager } from './audio.mjs';
 import { Debugger } from './debugger.mjs';
+import { Playground } from './playground.mjs';
 import {
   putRom, getRom, listRoms, deleteRom,
   putState, getState, putSRAM, getSRAM,
@@ -36,8 +37,32 @@ function toast(msg) {
 function showLibrary() {
   player.pause();
   $('view-player').hidden = true;
+  $('view-playground').hidden = true;
   $('view-library').hidden = false;
   renderLibrary();
+}
+
+function showPlayground() {
+  player.pause();
+  $('view-player').hidden = true;
+  $('view-library').hidden = true;
+  $('view-playground').hidden = false;
+}
+
+// hand a playground-built ROM straight to the player
+function runPlaygroundRom(rom) {
+  $('view-playground').hidden = true;
+  $('view-library').hidden = true;
+  $('view-player').hidden = false;
+  $('st-rom').textContent = '工作台 ROM';
+  $('st-mapper').textContent = 'mapper 0 · NROM (playground)';
+  currentRom = null;
+  player.onBatteryFlush = null;
+  player.loadRom(rom);
+  for (let i = 0; i < 5; i++) player.stepFrame();
+  player.render();
+  audio.start().then(() => player.play());
+  $('btn-pause').textContent = '⏸ 暂停';
 }
 
 async function showPlayer(id) {
@@ -150,6 +175,7 @@ $('file-input').onchange = async (e) => {
 };
 $('btn-library').onclick = showLibrary;
 $('btn-back').onclick = showLibrary;
+$('btn-playground').onclick = showPlayground;
 $('btn-pause').onclick = async () => {
   if (player.running) { player.pause(); $('btn-pause').textContent = '▶ 继续'; }
   else { await audio.start(); player.play(); $('btn-pause').textContent = '⏸ 暂停'; }
@@ -206,4 +232,5 @@ window.addEventListener('keydown', (e) => {
 
 // boot
 ensureBundled().then(renderLibrary);
-window.NESTALGIA = { player, audio, get console() { return player.console; }, BTN, debuggerPanel };
+const playground = new Playground({ onRun: runPlaygroundRom });
+window.NESTALGIA = { player, audio, get console() { return player.console; }, BTN, debuggerPanel, playground };

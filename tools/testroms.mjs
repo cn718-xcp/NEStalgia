@@ -1,6 +1,6 @@
 // NEStalgia — test ROM sources assembled with tools/asm.mjs. Each builder
 // returns { rom, chr } for headless verification of the integrated console.
-import { assemble, buildINES } from './asm.mjs';
+import { assemble, buildINES } from '../src/lib/asm.mjs';
 
 function buildPrg(src, { prgBlocks = 1 } = {}) {
   const { chunks } = assemble(src);

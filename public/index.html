@@ -10,6 +10,7 @@
 <header>
   <div class="logo">NESTALGIA<span class="logo-sub">8-BIT EMULATOR SUITE</span></div>
   <div class="header-actions">
+    <button id="btn-playground" class="ghost">⌨ 汇编工作台</button>
     <button id="btn-library" class="ghost">⌂ 游戏库</button>
   </div>
 </header>
@@ -23,6 +24,44 @@
     <button id="btn-open">选择 ROM 文件</button>
   </div>
   <div id="rom-grid" class="rom-grid"></div>
+</main>
+
+<!-- 汇编工作台视图 -->
+<main id="view-playground" hidden>
+  <div class="pg-layout">
+    <div class="pg-editor-col">
+      <div class="pg-toolbar">
+        <select id="pg-demo"></select>
+        <button id="pg-run" class="accent">▶ 组装并运行</button>
+        <span class="pg-hint">6502 · 由内置汇编器现场编译 · 直接在本机模拟器运行</span>
+      </div>
+      <textarea id="pg-editor" class="pg-editor" spellcheck="false"></textarea>
+      <div id="pg-error" class="pg-error" hidden></div>
+    </div>
+    <aside class="pg-help">
+      <h3>快速参考</h3>
+      <pre> lda #$80     立即数
+ lda $40      零页
+ sta $2007    绝对地址
+ lda $40,X    零页,X
+ lda ($40),Y  间接
+ beq label    分支
+ jsr/rts      子程序</pre>
+      <h3>伪指令</h3>
+      <pre> .org $8000   定位
+ .byte $01,'A'
+ .word nmi, reset
+ name = $2000 常量
+ label:       标签</pre>
+      <h3>可用资源</h3>
+      <pre>字库: tile = ASCII 码
+  'A'=$41 '0'=$30
+$02/$03 纯色块 tile
+$01 点阵 tile
+$A0 球形精灵 (PT1)
+$4016 手柄 (8次读)</pre>
+    </aside>
+  </div>
 </main>
 
 <!-- 播放器视图 -->

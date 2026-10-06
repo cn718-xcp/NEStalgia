@@ -1,4 +1,4 @@
-import { assemble, evalExpr, buildINES } from '../tools/asm.mjs';
+import { assemble, evalExpr, buildINES } from '../src/lib/asm.mjs';
 import { CPU } from '../src/core/cpu.mjs';
 import { test, eq, ok } from './harness.mjs';
 

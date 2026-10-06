@@ -8,7 +8,7 @@
 //   low/high: <expr  >expr      ; zero-page forward refs assemble as abs
 //   directives: .org .byte/.db .word/.dw .align [fill]
 //   comments: ; to end of line
-import { TABLE } from '../src/core/cpu.mjs';
+import { TABLE } from '../core/cpu.mjs';
 
 // name -> { mode -> lowest opcode }
 const ENCODE = {};
