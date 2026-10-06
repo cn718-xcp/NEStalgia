@@ -211,6 +211,26 @@ $('btn-turbo').onclick = (e) => {
   player.turbo = !player.turbo;
   e.currentTarget.classList.toggle('on', player.turbo);
 };
+$('btn-rec').onclick = async (e) => {
+  if (!player.isRecording()) {
+    player.startRecording();
+    e.currentTarget.textContent = '⏹ 停止';
+    e.currentTarget.classList.add('on');
+    toast('录像开始（画面 + 声音）');
+  } else {
+    const blob = await player.stopRecording();
+    e.currentTarget.textContent = '🔴 录像';
+    e.currentTarget.classList.remove('on');
+    if (blob) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${currentRom?.id || 'nestalgia'}_${Date.now()}.webm`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      toast(`录像已保存 (${(blob.size / 1024 / 1024).toFixed(1)} MB)`);
+    }
+  }
+};
 $('btn-fs').onclick = () => {
   const el = $('screen-wrap');
   if (document.fullscreenElement) document.exitFullscreen();

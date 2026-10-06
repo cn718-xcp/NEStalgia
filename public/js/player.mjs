@@ -204,4 +204,40 @@ export class Player {
   screenshot() {
     return new Promise((resolve) => this.canvas.toBlob(resolve, 'image/png'));
   }
+
+  // ---- WebM recording (video + audio) ----------------------------------------
+  isRecording() { return !!this.recorder && this.recorder.state === 'recording'; }
+
+  startRecording() {
+    if (this.isRecording()) return;
+    const vstream = this.canvas.captureStream(60);
+    const tracks = [...vstream.getVideoTracks()];
+    if (this.audio.ctx && this.audio.gain) {
+      if (!this.audio.recDest) {
+        this.audio.recDest = this.audio.ctx.createMediaStreamDestination();
+        this.audio.gain.connect(this.audio.recDest);
+      }
+      tracks.push(...this.audio.recDest.stream.getAudioTracks());
+    }
+    const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+      ? 'video/webm;codecs=vp9,opus'
+      : 'video/webm';
+    this.recorder = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: 8_000_000 });
+    this.recChunks = [];
+    this.recorder.ondataavailable = (e) => { if (e.data && e.data.size) this.recChunks.push(e.data); };
+    this.recorder.start(1000);
+  }
+
+  stopRecording() {
+    if (!this.isRecording()) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      this.recorder.onstop = () => {
+        const blob = new Blob(this.recChunks, { type: 'video/webm' });
+        this.recorder = null;
+        this.recChunks = [];
+        resolve(blob);
+      };
+      this.recorder.stop();
+    });
+  }
 }
