@@ -44,6 +44,26 @@ function generatePalette() {
 }
 export const NES_PALETTE = generatePalette();
 
+// Emphasis-bit variants of the palette ($2001 bits 5-7 boost B/G/R and dim
+// the rest, like a real TV). Built lazily; index 0 is the plain palette.
+const EMPHASIS_TABLES = [NES_PALETTE];
+function emphasisTable(bits) {
+  if (!EMPHASIS_TABLES[bits]) {
+    const t = new Uint32Array(64);
+    for (let i = 0; i < 64; i++) {
+      const c = NES_PALETTE[i];
+      let r = (c & 0xFF) / 255, g = ((c >> 8) & 0xFF) / 255, b = ((c >> 16) & 0xFF) / 255;
+      r = (bits & 1) ? Math.min(1, r * 1.1 + 0.03) : r * 0.75;
+      g = (bits & 2) ? Math.min(1, g * 1.1 + 0.03) : g * 0.75;
+      b = (bits & 4) ? Math.min(1, b * 1.1 + 0.03) : b * 0.75;
+      const R = Math.round(r * 255), G = Math.round(g * 255), B = Math.round(b * 255);
+      t[i] = 0xFF000000 | (B << 16) | (G << 8) | R;
+    }
+    EMPHASIS_TABLES[bits] = t;
+  }
+  return EMPHASIS_TABLES[bits];
+}
+
 export class PPU {
   constructor(cart) {
     this.cart = cart;
@@ -360,7 +380,7 @@ export class PPU {
     const bgOn = !!(this.mask & 0x08);
     const sprOn = !!(this.mask & 0x10);
     const showLeftBG = !!(this.mask & 0x02);
-    const showLeftSpr = !!(this.mask & 0x01);
+    const showLeftSpr = !!(this.mask & 0x04);
 
     let bgPix = 0, bgPal = 0;
     if (bgOn && (x >= 8 || showLeftBG)) {
@@ -406,7 +426,8 @@ export class PPU {
       c = this.paletteRead(0); // universal backdrop
     }
     if (this.mask & 0x01) c &= 0x30; // grayscale
-    const px = this.NEScolor(c, line, x);
+    const em = (this.mask >> 5) & 7;
+    const px = em ? emphasisTable(em)[c & 0x3F] : NES_PALETTE[c & 0x3F];
     this.framebuffer[line * SCREEN_W + x] = px;
   }
 

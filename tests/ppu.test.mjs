@@ -225,3 +225,25 @@ test('screen dimensions', () => {
   eq(SCREEN_W, 256); eq(SCREEN_H, 240);
   eq(NES_PALETTE.length, 64);
 });
+
+test('emphasis bits tint the output color', () => {
+  const { cart, ppu } = boot();
+  setupBGScene(ppu, cart);
+  ppu.cpuWrite(1, 0x08 | 0x20); // bg on + red emphasis (bit 5)
+  for (let i = 0; i < 2 * 89342; i++) ppu.tick();
+  const px = ppu.framebuffer[120 * SCREEN_W + 100];
+  ok(px !== NES_PALETTE[0x2A], 'color changed by emphasis');
+  // red channel boosted relative to green/blue vs the plain color
+  const plain = NES_PALETTE[0x2A];
+  const dR = (px & 0xFF) - (plain & 0xFF);
+  const dG = ((px >> 8) & 0xFF) - ((plain >> 8) & 0xFF);
+  const dB = ((px >> 16) & 0xFF) - ((plain >> 16) & 0xFF);
+  ok(dR > 0 && dR >= dG && dR >= dB, `red emphasis raises red most (dR=${dR} dG=${dG} dB=${dB})`);
+});
+
+test('emphasis off by default keeps colors identical', () => {
+  const { cart, ppu } = boot();
+  setupBGScene(ppu, cart);
+  for (let i = 0; i < 2 * 89342; i++) ppu.tick();
+  eq(ppu.framebuffer[120 * SCREEN_W + 100], NES_PALETTE[0x2A]);
+});
