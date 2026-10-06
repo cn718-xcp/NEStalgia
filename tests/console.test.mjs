@@ -1,6 +1,7 @@
 import { Console } from '../src/core/console.mjs';
 import { NES_PALETTE } from '../src/core/ppu.mjs';
 import { makeColorBars, makeSpriteScene, makeSpriteZeroHit } from '../tools/testroms.mjs';
+import { buildStarfall } from '../tools/game.mjs';
 import { test, eq, ok } from './harness.mjs';
 
 function px(console_, x, y) { return console_.ppu.framebuffer[y * 256 + x]; }
@@ -83,14 +84,14 @@ test('frame loop is bounded even for a jammed CPU', () => {
 });
 
 test('RAM write watchpoints fire through the console hook', () => {
-  const c = new Console(makeColorBars().rom);
+  const c = new Console(buildStarfall().rom);
   const hits = [];
-  c.watchWrites.add(0x10);
+  c.watchWrites.add(0x05); // frameReady — written by every NMI
   c.onWatchHit = (addr, val) => hits.push([addr, val]);
-  c.runFrames(2);
-  ok(hits.length > 0, `watchpoint fired ${hits.length} times`);
-  ok(hits.every(([a]) => a === 0x10));
-  c.watchWrites.delete(0x10);
+  c.runFrames(3);
+  ok(hits.length >= 3, `watchpoint fired ${hits.length} times`);
+  ok(hits.every(([a]) => a === 0x05));
+  c.watchWrites.delete(0x05);
   const n = hits.length;
   c.runFrames(2);
   eq(hits.length, n, 'removed watchpoints stop firing');
