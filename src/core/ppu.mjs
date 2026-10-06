@@ -227,7 +227,8 @@ export class PPU {
   // ---- main tick ---------------------------------------------------------------
   tick() {
     const line = this.scanline, dot = this.dot;
-    const renderingEnabled = (this.mask & 0x18) !== 0;
+    const mask = this.mask;
+    const renderingEnabled = (mask & 0x18) !== 0;
     const visible = line < 240;
     const prerender = line === 261;
     const fetchLine = visible || prerender;
@@ -242,25 +243,23 @@ export class PPU {
 
     if (fetchLine && renderingEnabled) {
       if ((dot >= 2 && dot <= 257) || (dot >= 321 && dot <= 337)) {
-        this.shiftBG();
-        const ph = (dot - 1) % 8;
+        this.shLoPat <<= 1; this.shHiPat <<= 1;
+        this.shLoAttr <<= 1; this.shHiAttr <<= 1;
+        const ph = (dot - 1) & 7;
         if (ph === 0) {
           this.loadShifters();
           this.ntByte = this.vramRead(0x2000 | (this.v & 0x0FFF));
         }
         else if (ph === 2) {
-          const a = 0x23C0 | (this.v & 0x0C00) | ((this.v >> 4) & 0x38) | ((this.v >> 2) & 0x07);
-          const byte = this.vramRead(a);
-          const shift = ((this.v >> 4) & 4) | (this.v & 2);
-          this.atByte = (byte >> shift) & 3;
+          const v = this.v;
+          const a = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07);
+          this.atByte = (this.vramRead(a) >> (((v >> 4) & 4) | (v & 2))) & 3;
         }
         else if (ph === 4) {
-          const addr = (this.control & 0x10) * 0x100 + this.ntByte * 16 + ((this.v >> 12) & 7);
-          this.bgLo = this.cart.ppuRead(addr);
+          this.bgLo = this.cart.ppuRead(((this.control & 0x10) << 8) + this.ntByte * 16 + ((this.v >> 12) & 7));
         }
         else if (ph === 6) {
-          const addr = (this.control & 0x10) * 0x100 + this.ntByte * 16 + 8 + ((this.v >> 12) & 7);
-          this.bgHi = this.cart.ppuRead(addr);
+          this.bgHi = this.cart.ppuRead(((this.control & 0x10) << 8) + this.ntByte * 16 + 8 + ((this.v >> 12) & 7));
         }
         else if (ph === 7) this.incX();
       }
@@ -377,13 +376,11 @@ export class PPU {
   }
 
   renderPixel(line, x) {
-    const bgOn = !!(this.mask & 0x08);
-    const sprOn = !!(this.mask & 0x10);
-    const showLeftBG = !!(this.mask & 0x02);
-    const showLeftSpr = !!(this.mask & 0x04);
-
+    const mask = this.mask;
+    const bgOn = (mask & 0x08) !== 0;
+    const sprOn = (mask & 0x10) !== 0;
     let bgPix = 0, bgPal = 0;
-    if (bgOn && (x >= 8 || showLeftBG)) {
+    if (bgOn && (x >= 8 || (mask & 0x02) !== 0)) {
       const bit = 15 - this.fineX;
       const p0 = (this.shLoPat >> bit) & 1;
       const p1 = (this.shHiPat >> bit) & 1;
@@ -391,44 +388,48 @@ export class PPU {
       if (bgPix) {
         const a0 = (this.shLoAttr >> bit) & 1;
         const a1 = (this.shHiAttr >> bit) & 1;
-        bgPal = ((a1 << 1) | a0) * 4;
+        bgPal = ((a1 << 1) | a0) << 2;
       }
     }
 
     let sprPix = 0, sprPal = 0, sprPriority = 0, spr0 = false;
-    if (sprOn && (x >= 8 || showLeftSpr)) {
+    if (sprOn && this.sprCount !== 0 && (x >= 8 || (mask & 0x04) !== 0)) {
+      const sprX = this.sprX, sprPatLo = this.sprPatLo, sprPatHi = this.sprPatHi, sprAttr = this.sprAttr, sprIs0 = this.sprIs0;
       for (let i = 0; i < this.sprCount; i++) { // lower OAM index wins
-        const dx = x - this.sprX[i];
+        const dx = x - sprX[i];
         if (dx < 0 || dx > 7) continue;
-        const p0 = (this.sprPatLo[i] >> (7 - dx)) & 1;
-        const p1 = (this.sprPatHi[i] >> (7 - dx)) & 1;
+        const p0 = (sprPatLo[i] >> (7 - dx)) & 1;
+        const p1 = (sprPatHi[i] >> (7 - dx)) & 1;
         const pix = (p1 << 1) | p0;
         if (!pix) continue;
         sprPix = pix;
-        sprPal = (this.sprAttr[i] & 3) * 4;
-        sprPriority = this.sprAttr[i] & 0x20;
-        spr0 = !!this.sprIs0[i];
+        sprPal = (sprAttr[i] & 3) << 2;
+        sprPriority = sprAttr[i] & 0x20;
+        spr0 = sprIs0[i] !== 0;
         break;
       }
     }
 
     // sprite 0 hit
-    if (spr0 && sprPix && bgPix && x < 255 && bgOn && sprOn && (x >= 8 || (showLeftBG && showLeftSpr))) {
+    if (spr0 && sprPix && bgPix && x < 255 && bgOn && sprOn && (x >= 8 || ((mask & 0x06) === 0x06))) {
       this.status |= 0x40;
     }
 
     let c;
     if (sprPix && (!bgPix || !sprPriority)) {
-      c = this.paletteRead(0x10 + sprPal + sprPix);
+      let i = 0x10 + sprPal + sprPix;
+      if ((i & 0x13) === 0x10) i &= ~0x10; // sprite $1x mirrors backdrop at x0/x4/x8/xc
+      c = this.palette[i];
     } else if (bgPix) {
-      c = this.paletteRead(bgPal + bgPix);
+      c = this.palette[bgPal + bgPix];
     } else {
-      c = this.paletteRead(0); // universal backdrop
+      c = this.palette[0]; // universal backdrop
     }
-    if (this.mask & 0x01) c &= 0x30; // grayscale
-    const em = (this.mask >> 5) & 7;
-    const px = em ? emphasisTable(em)[c & 0x3F] : NES_PALETTE[c & 0x3F];
-    this.framebuffer[line * SCREEN_W + x] = px;
+    if (mask & 0x01) c &= 0x30; // grayscale
+    const em = mask & 0xE0;
+    this.framebuffer[line * SCREEN_W + x] = em
+      ? emphasisTable(em >> 5)[c]
+      : NES_PALETTE[c];
   }
 
   NEScolor(c) {

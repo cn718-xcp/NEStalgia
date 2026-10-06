@@ -275,8 +275,8 @@ export class CPU {
       default: this.jammed = true;
     }
 
-    // page-cross penalty for read instructions
-    if (this._cross && (alwaysCross || READ_MODES.has(mode))) this.cycles++;
+    // page-cross penalty for read instructions (precomputed per opcode)
+    if (this._cross && info[4]) this.cycles++;
     this.lastPC = start;
     return this.cycles - c0;
   }
@@ -491,3 +491,9 @@ def(0x9C, 'SHY', 'absx', 5, true);
 def(0x9E, 'SHX', 'absy', 5, true);
 def(0x9F, 'SHA', 'absy', 5, true);
 def(0xBB, 'LAS', 'absy', 4);
+
+// precompute page-cross penalty eligibility (index 4) for the dispatch loop
+for (let i = 0; i < 256; i++) {
+  const e = TABLE[i];
+  if (e) e[4] = e[3] || READ_MODES.has(e[1]);
+}

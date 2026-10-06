@@ -50,6 +50,7 @@ class Pulse {
     }
   }
   tickTimer() {
+    if (!this.enabled || this.lengthCounter === 0) return; // muted: duty phase is irrelevant
     if (--this.timer < 0) {
       this.timer = this.timerPeriod;
       this.dutyPos = (this.dutyPos + 1) & 7;
@@ -113,9 +114,10 @@ class Triangle {
     }
   }
   tickTimer() {
+    if (this.lengthCounter === 0 || this.linearCounter === 0) return; // muted
     if (--this.timer < 0) {
       this.timer = this.timerPeriod;
-      if (this.lengthCounter > 0 && this.linearCounter > 0 && this.timerPeriod > 1) {
+      if (this.timerPeriod > 1) {
         this.seqPos = (this.seqPos + 1) & 31;
       }
     }
@@ -156,6 +158,7 @@ class Noise {
     }
   }
   tickTimer() {
+    if (!this.enabled || this.lengthCounter === 0) return; // muted: LFSR phase is irrelevant
     if (--this.timer < 0) {
       this.timer = NOISE_PERIODS[this.periodIdx];
       const fb = (this.shift & 1) ^ ((this.shift >> (this.mode ? 6 : 1)) & 1);
@@ -221,6 +224,7 @@ class DMC {
     }
   }
   tickTimer(readFn) {
+    if (this.silence && this.bytesLeft === 0 && !this.enabled) return; // fully idle
     if (--this.timer < 0) {
       this.timer = DMC_RATES[this.rateIdx];
       if (!this.silence) {
@@ -328,10 +332,14 @@ export class APU {
 
   runCycles(n, console_) {
     if (console_) this.busReader = (a) => console_.cpuRead(a);
+    const p1 = this.pulse1, p2 = this.pulse2, tri = this.triangle, noi = this.noise, dmc = this.dmc;
+    const dmcRead = (a) => this.busRead(a);
     for (let i = 0; i < n; i++) {
-      this.pulse1.tickTimer(); this.pulse2.tickTimer();
-      this.triangle.tickTimer(); this.noise.tickTimer();
-      this.dmc.tickTimer((a) => this.busRead(a));
+      if (p1.enabled && p1.lengthCounter !== 0) p1.tickTimer();
+      if (p2.enabled && p2.lengthCounter !== 0) p2.tickTimer();
+      if (tri.lengthCounter !== 0 && tri.linearCounter !== 0) tri.tickTimer();
+      if (noi.enabled && noi.lengthCounter !== 0) noi.tickTimer();
+      if (!(dmc.silence && dmc.bytesLeft === 0 && !dmc.enabled)) dmc.tickTimer(dmcRead);
       this.frameCycles++;
       if (this.frameMode === 0) {
         if (this.frameCycles === 14914 || this.frameCycles === 29828 || this.frameCycles === 44744) this.quarterTick();

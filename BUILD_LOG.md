@@ -31,3 +31,9 @@
 
 ### 2026-10-06 M11 文档与发布
 - README.md（架构图/快速开始/验证方法论/已知限制）+ docs/DEMO.md（5 幕演示手册，全部配真实模拟输出截图）+ 终版 tag v1.0.0。
+
+### 2026-10-06 M12-M14 兼容性 / 画质 / 性能
+- M12: Mapper 4 (MMC3) 完整实现（命令/值寄存器对、CHR 2K/1K 窗口与模式互换、PRG 模式、扫描线 IRQ 计数器），PPU 增加 onA12 扫描线钩子（dot 260），Console 仲裁 cart.irqLine；另加 mapper 11/34/66。支持阵容达 9 种 mapper（约 85% 游戏库）。MMC3 集成测试 ROM 演示了 bank 物理布局要点：代码必须放进固定的最后两个 8K bank（物理 0x1C000+）。
+- M13: PPU 颜色强调位（$2001 bit5-7 → 8 组惰性调色板变体）；顺带修正精灵左裁剪位为 bit2（此前误用 bit0 与灰度位冲突）。
+- M14: 新增 scripts/bench.mjs。V8 cpu-profile 实测：PPU tick 35.6% + renderPixel 15.7%、console 帧循环 10.5%、APU 12.6%、CPU 10%。优化（APU 静音通道门控上提到调用点、CPU 页跨越惩罚预计算进 opcode 表、renderPixel 局部变量/内联调色板镜像）：基线 ~400fps → ~430-445fps（±5% 方差）。结论：逐点 PPU（精度核心）占 51% 是该架构的性能地板，~430fps ≈ 7 倍实时，进一步收益需扫描线批处理重构，风险收益不成比例，保留现状。
+- 附带修复：console.dmaPending 显式初始化（此前依赖 undefined>=0===false 的偶然行为）。

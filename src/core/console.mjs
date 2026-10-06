@@ -18,6 +18,7 @@ export class Console {
     this.shiftIdx = [0, 0];
     this.prevNmi = false;
     this.watchWrites = new Set();
+    this.dmaPending = -1;
     this.onWatchHit = null;
     this.ppu.onA12 = this.cart.clockIrq ? () => this.cart.clockIrq() : null;
     this.reset();
@@ -32,6 +33,7 @@ export class Console {
     this.strobe = 0;
     this.shiftIdx = [0, 0];
     this.watchWrites = new Set();
+    this.dmaPending = -1;
     this.onWatchHit = null;
     this.ppu.onA12 = this.cart.clockIrq ? () => this.cart.clockIrq() : null;
     this.cpu.reset();
@@ -89,16 +91,15 @@ export class Console {
       this.ppu.oamDMA(page, (a) => this.cpuRead(a));
       total += 513;
     }
-    for (let i = 0; i < total * 3; i++) this.ppu.tick();
+    const ppu = this.ppu;
+    const ticks = total * 3;
+    for (let i = 0; i < ticks; i++) ppu.tick();
     if (this.apu) this.apu.runCycles(total, this);
     // interrupt edges
-    const nmi = this.ppu.nmiLine;
+    const nmi = ppu.nmiLine;
     if (nmi && !this.prevNmi) this.cpu.nmiPending = true;
     this.prevNmi = nmi;
-    const irq = (this.apu && this.apu.irqLine) || this.cart.irqLine || false;
-    if (irq && !this.prevIrq) { /* level-triggered; cpu samples each step */ }
-    this.prevIrq = irq;
-    this.cpu.irqLine = irq;
+    this.cpu.irqLine = (this.apu && this.apu.irqLine) || this.cart.irqLine || false;
     return total;
   }
 
