@@ -34,6 +34,13 @@ export class Debugger {
           <button id="dbg-bp-add">添加</button>
         </div>
         <div id="dbg-bps" class="bp-list"></div>
+        <h3>写入观察点 <span class="hint">RAM 写入即暂停</span></h3>
+        <div class="bp-row">
+          <input id="dbg-wp-input" placeholder="地址 如 0001" maxlength="4">
+          <button id="dbg-wp-add">添加</button>
+        </div>
+        <div id="dbg-wps" class="bp-list"></div>
+        <div id="dbg-wp-last" class="wp-last"></div>
         <h3>内存</h3>
         <div class="bp-row">
           <input id="dbg-mem-goto" placeholder="地址 如 0200" maxlength="4" value="0000">
@@ -63,9 +70,26 @@ export class Debugger {
     document.getElementById('dbg-follow').onchange = (e) => { this.followPC = e.target.checked; this.refresh(); };
     document.getElementById('dbg-bp-add').onclick = () => this.addBP();
     document.getElementById('dbg-bp-input').onkeydown = (e) => { if (e.key === 'Enter') this.addBP(); };
+    document.getElementById('dbg-wp-add').onclick = () => this.addWP();
+    document.getElementById('dbg-wp-input').onkeydown = (e) => { if (e.key === 'Enter') this.addWP(); };
     document.getElementById('dbg-mem-go').onclick = () => this.refresh();
     this.memBase = 0;
     this.disBase = 0;
+    this.watchSet = new Set();
+    this.lastWrite = null;
+  }
+
+  // bind this debugger's watch set to a (fresh) console instance
+  attach(console_) {
+    console_.watchWrites = this.watchSet;
+    console_.onWatchHit = (addr, val) => {
+      this.lastWrite = { addr, val, pc: console_.cpu.PC };
+      this.player.pause();
+      const el = document.getElementById('debugger');
+      el.classList.add('bp-hit');
+      setTimeout(() => el.classList.remove('bp-hit'), 400);
+      this.refresh();
+    };
   }
 
   addBP() {
@@ -90,6 +114,31 @@ export class Debugger {
       del.onclick = () => { this.breakpoints.delete(bp); this.renderBPs(); };
       row.appendChild(del);
       el.appendChild(row);
+    }
+  }
+
+  addWP() {
+    const input = document.getElementById('dbg-wp-input');
+    const v = parseInt(input.value, 16);
+    if (!isNaN(v)) { this.watchSet.add(v & 0x7FF); input.value = ''; this.renderWPs(); }
+  }
+  removeWP(addr) { this.watchSet.delete(addr); this.renderWPs(); }
+  renderWPs() {
+    const el = document.getElementById('dbg-wps');
+    el.innerHTML = '';
+    for (const wp of [...this.watchSet].sort((a, b) => a - b)) {
+      const row = document.createElement('div');
+      row.className = 'bp-item';
+      row.innerHTML = `<span class="wp-addr">$${wp.toString(16).padStart(2, '0')}</span>`;
+      const del = document.createElement('button');
+      del.textContent = '×';
+      del.onclick = () => this.removeWP(wp);
+      row.appendChild(del);
+      el.appendChild(row);
+    }
+    const last = document.getElementById('dbg-wp-last');
+    if (this.lastWrite) {
+      last.textContent = `最后命中: $${this.lastWrite.addr.toString(16).padStart(2, '0')} ← ${this.lastWrite.val.toString(16).padStart(2, '0')} @ PC $${this.lastWrite.pc.toString(16).padStart(4, '0')}`;
     }
   }
 

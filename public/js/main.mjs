@@ -57,6 +57,7 @@ async function showPlayer(id) {
     sramTimer = setTimeout(() => putSRAM(id, data.slice()), 3000);
   };
   player.loadRom(rec.data, { sram });
+  debuggerPanel.attach(player.console);
 
   // thumbnail for the library (first boot frame)
   for (let i = 0; i < 30; i++) player.stepFrame();

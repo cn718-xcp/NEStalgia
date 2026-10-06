@@ -214,3 +214,7 @@ body.dragging::after {
   color: var(--text);
   z-index: 50;
 }
+
+.wp-addr { color: var(--accent2); }
+.wp-last { color: var(--dim); font-size: 11px; margin-top: 4px; }
+.dbg-col h3 .hint { color: #55556a; font-weight: 400; letter-spacing: 0; }

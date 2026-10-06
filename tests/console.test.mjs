@@ -81,3 +81,17 @@ test('frame loop is bounded even for a jammed CPU', () => {
   try { c.runFrames(2); frames = 2; } catch { /* jammed is fine */ }
   ok(frames === 2 || frames === 0, 'does not hang forever');
 });
+
+test('RAM write watchpoints fire through the console hook', () => {
+  const c = new Console(makeColorBars().rom);
+  const hits = [];
+  c.watchWrites.add(0x10);
+  c.onWatchHit = (addr, val) => hits.push([addr, val]);
+  c.runFrames(2);
+  ok(hits.length > 0, `watchpoint fired ${hits.length} times`);
+  ok(hits.every(([a]) => a === 0x10));
+  c.watchWrites.delete(0x10);
+  const n = hits.length;
+  c.runFrames(2);
+  eq(hits.length, n, 'removed watchpoints stop firing');
+});
