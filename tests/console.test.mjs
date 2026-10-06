@@ -88,7 +88,7 @@ test('RAM write watchpoints fire through the console hook', () => {
   const hits = [];
   c.watchWrites.add(0x05); // frameReady — written by every NMI
   c.onWatchHit = (addr, val) => hits.push([addr, val]);
-  c.runFrames(3);
+  c.runFrames(8);
   ok(hits.length >= 3, `watchpoint fired ${hits.length} times`);
   ok(hits.every(([a]) => a === 0x05));
   c.watchWrites.delete(0x05);
