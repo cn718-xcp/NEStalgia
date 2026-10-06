@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEStalgia — 从零编写的 NES 模拟器</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header>
+  <div class="logo">NESTALGIA<span class="logo-sub">8-BIT EMULATOR SUITE</span></div>
+  <div class="header-actions">
+    <button id="btn-library" class="ghost">⌂ 游戏库</button>
+  </div>
+</header>
+
+<!-- 游戏库视图 -->
+<main id="view-library">
+  <div class="drop-hint" id="drop-hint">
+    <h1>把你的 .nes ROM 拖到这里</h1>
+    <p>或者点击下方按钮选择文件 · 本地运行，不离开浏览器 · 内置自制游戏《STARFALL》</p>
+    <input type="file" id="file-input" accept=".nes" multiple hidden>
+    <button id="btn-open">选择 ROM 文件</button>
+  </div>
+  <div id="rom-grid" class="rom-grid"></div>
+</main>
+
+<!-- 播放器视图 -->
+<main id="view-player" hidden>
+  <div class="player-layout" id="player-layout">
+    <div class="player-main">
+      <div class="screen-wrap" id="screen-wrap">
+        <canvas id="screen" width="256" height="240"></canvas>
+        <div class="crt" id="crt-overlay" hidden></div>
+      </div>
+      <div class="toolbar">
+        <button id="btn-back">⌂ 返回</button>
+        <button id="btn-pause">⏸ 暂停</button>
+        <button id="btn-reset">⟲ 重置</button>
+        <button id="btn-save-state">💾 存档</button>
+        <button id="btn-load-state">📂 读档</button>
+        <button id="btn-shot">📷 截图</button>
+        <button id="btn-crt">📺 CRT</button>
+        <button id="btn-turbo">⏩ 连发</button>
+        <button id="btn-fs">⛶ 全屏</button>
+        <button id="btn-debugger">🛠 调试器</button>
+        <label class="vol">🔊 <input type="range" id="vol" min="0" max="100" value="50"></label>
+      </div>
+      <div class="statusbar">
+        <span id="st-rom">—</span>
+        <span id="st-fps">0 fps</span>
+        <span id="st-frame">frame 0</span>
+        <span id="st-mapper">—</span>
+        <span class="keys-help">方向键=十字键 · X/J=A · Z/K=B · Enter=START · Shift=SELECT · Backspace=按住倒带</span>
+      </div>
+    </div>
+    <aside id="debugger" class="debugger" hidden></aside>
+  </div>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+<script type="module" src="/js/main.mjs"></script>
+</body>
+</html>
