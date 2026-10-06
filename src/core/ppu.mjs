@@ -221,7 +221,7 @@ export class PPU {
     }
 
     if (fetchLine && renderingEnabled) {
-      if ((dot >= 2 && dot <= 257) || (dot >= 322 && dot <= 337)) {
+      if ((dot >= 2 && dot <= 257) || (dot >= 321 && dot <= 337)) {
         this.shiftBG();
         const ph = (dot - 1) % 8;
         if (ph === 0) {
