@@ -86,3 +86,13 @@
   3. `.github/workflows/ci.yml`:node 20/22/24 矩阵跑 `node scripts/run-tests.mjs`(klaus 需 tmp/klaus.bin,不入 CI);`deploy-pages.yml`:checkout → `cp -r src/core public/core && cp -r src/lib public/lib && cp -r roms public/roms` → configure-pages/upload-pages-artifact(path: public)/deploy-pages@v4,触发 main push + workflow_dispatch。
   4. docs/PUBLISH.md:发布指南(建仓→推送→Settings→Pages→Source: GitHub Actions→部署后验证 .mjs MIME 与 /core/ 可达;repo topics 建议 nes-emulator/6502/emulator/javascript/retro/homebrew/famicom/assembler;CI 徽章 URL 替换 USERNAME;合规要点:模拟器本身合法、仓库只含自制 STARFALL ROM 无任何版权 ROM、Klaus 二进制已 gitignore、Nova ROM 已 gitignore)。
   5. 分模块提交:①LICENSE+README 修正+双语 ②workflows ③PUBLISH.md;BUILD_LOG 收尾;版本保持 v1.1.2(纯文档/基建)。
+
+### 2026-10-07 发布前优化完成:双语 README + CI/Pages 工作流 + 发布指南(v1.1.2)
+- 承接上方中断保存点的 5 项待办,全部完成:
+  1. **README.md 修正**:语言切换 + 4 枚静态徽章(tests 135 / deps 0 / node ≥20 / MIT)+ 注释态 CI/Demo 徽章(发布后填用户名)+ 7 处过时数据修正(5 种→9 种 Mapper、mapper 全列表、117→135、7 文件 98 断言→10 文件 135 断言、src/lib 补全 asm/demos/font、架构图 Mapper 列表、9,000 行→7,100 行诚实数字)+ **2×2 截图墙**(title/play/web-first-run/test-sprites,均为 build-roms 真实输出)+ 许可节注明无版权 ROM。另发现并修正:汇编器路径 `tools/asm.mjs`→`src/lib/asm.mjs`(M16 提取后 tools/ 下已无此文件)。
+  2. **README.en.md**:全文英文版,与修正后中文版逐节同步(调研结论:popular 竞品全英文,双语是 awesome 列表收录硬前提)。
+  3. **工作流**:`.github/workflows/ci.yml` node 20/22/24 矩阵跑 run-tests(零依赖免安装);`deploy-pages.yml` checkout → 物化 src/core|src/lib|roms 进 public/ → upload-pages-artifact → deploy-pages@v4(server.mjs 的 /core/ /lib/ 虚拟前缀在纯静态 Pages 上必须物化,已复核前端 import 全部为绝对路径)。
+  4. **docs/PUBLISH.md**:合规自查、7 步发布流程、FAQ(Pages 物化原因/.mjs MIME/私有仓限制/后续优先级)。
+  5. 分模块提交 ×3;版本保持 v1.1.2(纯文档/基建,无代码变更)。
+- 验证:135 项测试全绿(文档改动不触码,复跑确认);未做浏览器验证(无 UI 改动)。
+- **留给用户的一次性动作**:建 GitHub 仓 → push → Settings→Pages 选 GitHub Actions → README 徽章替换 USERNAME →(可选)提交 jsemu/awesome-nesdev 收录。
