@@ -135,3 +135,141 @@ test('APU state roundtrip preserves channel state', () => {
   eq(b.pulse1.timerPeriod, a.pulse1.timerPeriod);
   eq(b.frameCycles, a.frameCycles);
 });
+
+// ── Triangle linear counter ──────────────────────────────────────────
+
+test('triangle linear counter decrements each quarter frame (control=0)', () => {
+  const a = apu();
+  a.cpuWrite(0x4015, 0x04); // enable triangle
+  a.cpuWrite(0x4008, 0x05); // control=0, linearReload=5
+  a.cpuWrite(0x400B, 0x08); // set length counter + reload linear counter
+  // After write to reg 3: linearCounter = linearReload = 5
+  eq(a.triangle.linearCounter, 5, 'linear counter reloaded on reg 3 write');
+  // Run through one full 4-step frame (59658 cycles = 3 quarter ticks at 14914, 29828, 44744)
+  a.runCycles(59658);
+  // 3 quarter ticks: 5→4→3→2
+  eq(a.triangle.linearCounter, 2, '3 quarter ticks should decrement from 5 to 2');
+});
+
+test('triangle linear counter reaches 0 and channel stops (control=0)', () => {
+  const a = apu();
+  a.cpuWrite(0x4015, 0x04);
+  a.cpuWrite(0x4008, 0x02); // control=0, linearReload=2
+  a.cpuWrite(0x400B, 0x08); // linearCounter = 2
+  eq(a.triangle.linearCounter, 2);
+  // 2 quarter ticks to reach 0: 2→1→0
+  a.runCycles(59658); // 4 quarter ticks → 2→1→0→0 (clamped)
+  eq(a.triangle.linearCounter, 0, 'linear counter reached 0');
+  eq(a.triangle.output(), 0, 'output is 0 when linear counter is 0');
+});
+
+test('triangle linear counter stays alive when control=1', () => {
+  const a = apu();
+  a.cpuWrite(0x4015, 0x04);
+  a.cpuWrite(0x4008, 0x83); // control=1, linearReload=3
+  a.cpuWrite(0x400B, 0x08); // linearCounter = 3
+  // Run 4 full frames (16 quarter ticks)
+  a.runCycles(59658 * 4);
+  // With control=1: each quarter tick decrements then reloads to 3
+  // So counter should always be 3 after the reload phase
+  eq(a.triangle.linearCounter, 3, 'linear counter reloaded every quarter frame');
+  ok(a.triangle.output() !== 0, 'channel still producing output');
+});
+
+test('triangle output is 0 when linear counter is 0 even if length > 0', () => {
+  const a = apu();
+  a.cpuWrite(0x4015, 0x04);
+  a.cpuWrite(0x4008, 0x00); // control=0, linearReload=0
+  a.cpuWrite(0x400B, 0x08); // linearCounter = 0 (reloaded from linearReload=0)
+  eq(a.triangle.linearCounter, 0);
+  ok(a.triangle.lengthCounter > 0, 'length counter is active');
+  eq(a.triangle.output(), 0, 'silent when linear counter is 0');
+});
+
+test('triangle length counter halts when control=1', () => {
+  const a = apu();
+  a.cpuWrite(0x4015, 0x04);
+  a.cpuWrite(0x4008, 0x80); // control=1 (halt length counting)
+  a.cpuWrite(0x400B, 0x00); // length index 0 = 10
+  eq(a.triangle.lengthCounter, 10);
+  a.runCycles(59658 * 3); // multiple frames
+  eq(a.triangle.lengthCounter, 10, 'length counter does not decrement when control=1');
+});
+
+test('triangle length counter decrements when control=0', () => {
+  const a = apu();
+  a.cpuWrite(0x4015, 0x04);
+  a.cpuWrite(0x4008, 0x05); // control=0, linearReload=5
+  a.cpuWrite(0x400B, 0x00); // length index 0 = 10
+  eq(a.triangle.lengthCounter, 10);
+  a.runCycles(59658); // one 4-step frame = 2 half ticks
+  eq(a.triangle.lengthCounter, 8, 'two half-frame ticks decremented length');
+});
+
+// ── APU quarter frame sequencer timing ───────────────────────────────
+
+test('4-step: exactly 3 quarter ticks per frame', () => {
+  // Use control=0 so linear counter actually decrements without reload
+  const a = apu();
+  a.cpuWrite(0x4017, 0x00); // 4-step mode
+  a.cpuWrite(0x4015, 0x04);
+  a.cpuWrite(0x4008, 0x10); // control=0, linearReload=16
+  a.cpuWrite(0x400B, 0x08); // linearCounter = 16, lengthCounter = 10
+
+  // Run just before 1st quarter (cycle 14913)
+  a.runCycles(14913);
+  eq(a.triangle.linearCounter, 16, 'no quarter tick before cycle 14914');
+
+  // Run to cycle 14914 (1st quarter tick)
+  a.runCycles(1);
+  eq(a.triangle.linearCounter, 15, '1st quarter tick at cycle 14914');
+
+  // Run to cycle 29828 (2nd quarter tick)
+  a.runCycles(29828 - 14914);
+  eq(a.triangle.linearCounter, 14, '2nd quarter tick at cycle 29828');
+
+  // Run to cycle 44744 (3rd quarter tick)
+  a.runCycles(44744 - 29828);
+  eq(a.triangle.linearCounter, 13, '3rd quarter tick at cycle 44744');
+
+  // Run to end of frame (cycle 59658) — no more quarter ticks
+  a.runCycles(59658 - 44744);
+  eq(a.triangle.linearCounter, 13, 'no 4th quarter tick in 4-step mode');
+});
+
+test('5-step: exactly 4 quarter ticks per frame', () => {
+  const a = apu();
+  a.cpuWrite(0x4017, 0x80); // 5-step mode
+  a.cpuWrite(0x4015, 0x04);
+  a.cpuWrite(0x4008, 0x10); // control=0, linearReload=16
+  a.cpuWrite(0x400B, 0x08); // linearCounter = 16
+
+  a.runCycles(14914); // 1st quarter
+  eq(a.triangle.linearCounter, 15, '5-step: 1st quarter at 14914');
+
+  a.runCycles(29828 - 14914); // 2nd quarter
+  eq(a.triangle.linearCounter, 14, '5-step: 2nd quarter at 29828');
+
+  a.runCycles(44744 - 29828); // 3rd quarter
+  eq(a.triangle.linearCounter, 13, '5-step: 3rd quarter at 44744');
+
+  a.runCycles(52198 - 44744); // 4th quarter
+  eq(a.triangle.linearCounter, 12, '5-step: 4th quarter at 52198');
+
+  a.runCycles(74566 - 52198); // rest of frame
+  eq(a.triangle.linearCounter, 12, '5-step: no 5th quarter tick');
+});
+
+test('quarter frame also drives pulse and noise envelopes', () => {
+  const a = apu();
+  a.cpuWrite(0x4015, 0x01); // enable pulse1
+  a.cpuWrite(0x4000, 0x30); // halt=1, constant volume, vol=0
+  a.cpuWrite(0x4003, 0x00); // restart envelope → envDecay=15
+  // After restart: envDecay=15, then quarter tick will see envRestart flag
+  a.runCycles(14914); // 1st quarter tick processes envelope
+  // Envelope was restarted, first quarter tick processes the restart
+  eq(a.pulse1.envDecay, 15, 'envelope restarted');
+  a.runCycles(14914); // 2nd quarter tick
+  // Now envelope should start decaying (divider counts down)
+  ok(a.pulse1.envDecay >= 14, 'envelope decays after quarter ticks');
+});

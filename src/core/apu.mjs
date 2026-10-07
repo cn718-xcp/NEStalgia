@@ -122,11 +122,8 @@ class Triangle {
     }
   }
   tickQuarter() {
-    if (this.control) {
-      this.linearCounter = this.linearReload;
-    } else if (this.linearCounter > 0) {
-      this.linearCounter--;
-    }
+    if (this.linearCounter > 0) this.linearCounter--;
+    if (this.control) this.linearCounter = this.linearReload;
   }
   tickLength() { if (!this.control && this.lengthCounter > 0) this.lengthCounter--; }
   output() {
