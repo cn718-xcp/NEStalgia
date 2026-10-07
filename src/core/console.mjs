@@ -117,6 +117,9 @@ export class Console {
   }
 
   // ---- save states ------------------------------------------------------------
+  // Captures are expected at instruction boundaries between frames (the UI only
+  // saves while paused or between runFrame calls): dmaPending and the controller
+  // shift registers are intentionally not serialized.
   toState() {
     return {
       ram: b64(this.ram),

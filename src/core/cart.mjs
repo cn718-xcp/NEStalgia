@@ -77,7 +77,7 @@ export class Cartridge {
   _cpuBankWrite(addr, v) {
     switch (this.mapperId) {
       case 2: if (addr >= 0x8000) this.prgBankL = ((v & 0x0F) * 16384) % this.prg.length; break;
-      case 3: this.chrBank6 = v & 0x03; break; // CNROM: 2 bits typical
+      case 3: this.chrBank6 = v & 0x0F; break; // CNROM: up to 8 banks, reads wrap via modulo
       case 7: this.prgBank32 = ((v & 0x03) * 32768) % this.prg.length; this.mirroring = (v & 0x10) ? 'S1' : 'S0'; this.hardwired = false; break;
       case 1: this._mmc1Write(addr, v); break;
       case 4: this._mmc3Write(addr, v); break;

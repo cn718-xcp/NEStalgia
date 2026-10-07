@@ -27,7 +27,8 @@ export class AudioManager {
 
   push(samples) {
     if (this.node && this.enabled && this.ctx && this.ctx.state === 'running') {
-      this.node.port.postMessage(samples);
+      // samples is a freshly sliced buffer — transfer it, zero-copy
+      this.node.port.postMessage(samples, [samples.buffer]);
     }
   }
 

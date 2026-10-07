@@ -1,15 +1,36 @@
 // Minimal sequential test harness. scripts/run-tests.mjs imports test files
 // in order; this module aggregates results and prints a final summary.
 const state = { passed: 0, failed: 0, failures: [], file: '' };
+const pending = [];
 
 export function test(name, fn) {
   try {
-    fn();
-    state.passed++;
+    const r = fn();
+    if (r && typeof r.then === 'function') {
+      // async test: count it provisionally, settle before summary()
+      pending.push(
+        r.then(
+          () => {},
+          (err) => {
+            state.failed++;
+            state.passed--;
+            state.failures.push({ file: state.file, name, err: String((err && err.message) || err) });
+          },
+        ),
+      );
+      state.passed++;
+    } else {
+      state.passed++;
+    }
   } catch (err) {
     state.failed++;
     state.failures.push({ file: state.file, name, err: String((err && err.message) || err) });
   }
+}
+
+// resolve after every pending async test has settled
+export function settle() {
+  return Promise.allSettled(pending);
 }
 
 export function eq(actual, expected, msg = '') {

@@ -59,10 +59,10 @@ function runPlaygroundRom(rom) {
   currentRom = null;
   player.onBatteryFlush = null;
   player.loadRom(rom);
+  debuggerPanel.attach(player.console); // keep watchpoints alive for playground ROMs
   for (let i = 0; i < 5; i++) player.stepFrame();
   player.render();
   audio.start().then(() => player.play());
-  $('btn-pause').textContent = '⏸ 暂停';
 }
 
 async function showPlayer(id) {
@@ -92,7 +92,6 @@ async function showPlayer(id) {
   // enter play immediately (the card click counts as the audio gesture)
   await audio.start();
   player.play();
-  $('btn-pause').textContent = '⏸ 暂停';
 }
 
 function hasBattery(rom) { return (rom[6] & 0x02) !== 0; }
@@ -100,6 +99,10 @@ function mapperOf(rom) { return ((rom[7] & 0xF0) | (rom[6] >> 4)); }
 function metaOf(rec) {
   return { id: rec.id, name: rec.name, mapper: rec.mapper, size: rec.size, added: rec.added, thumb: rec.thumb };
 }
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+));
 
 async function renderLibrary() {
   const grid = $('rom-grid');
@@ -115,7 +118,7 @@ async function renderLibrary() {
     card.innerHTML = `
       <div class="rom-thumb">${thumb}</div>
       <div class="rom-meta">
-        <div class="rom-name">${r.name}</div>
+        <div class="rom-name">${esc(r.name)}</div>
         <div class="rom-sub">
           <span>mapper ${r.mapper} · ${(r.size / 1024).toFixed(0)}KB</span>
           <span class="del" title="删除">✕</span>
@@ -177,18 +180,22 @@ $('btn-library').onclick = showLibrary;
 $('btn-back').onclick = showLibrary;
 $('btn-playground').onclick = showPlayground;
 $('btn-pause').onclick = async () => {
-  if (player.running) { player.pause(); $('btn-pause').textContent = '▶ 继续'; }
-  else { await audio.start(); player.play(); $('btn-pause').textContent = '⏸ 暂停'; }
+  if (player.running) {
+    player.pause();
+  } else {
+    await audio.start();
+    player.play();
+  }
 };
 $('btn-reset').onclick = () => { player.reset(); toast('已重置'); };
 $('btn-save-state').onclick = async () => {
-  if (!player.console) return;
+  if (!player.console || !currentRom) { toast('工作台 ROM 暂不支持存档槽'); return; }
   const thumb = $('screen').toDataURL('image/png');
   await putState(`state_${currentRom.id}`, player.saveState(), thumb);
   toast('状态已保存');
 };
 $('btn-load-state').onclick = async () => {
-  if (!player.console) return;
+  if (!player.console || !currentRom) { toast('工作台 ROM 暂不支持读档'); return; }
   const rec = await getState(`state_${currentRom.id}`);
   if (!rec) { toast('没有存档'); return; }
   player.loadState(rec.state);
@@ -244,6 +251,11 @@ $('btn-debugger').onclick = (e) => {
   if (debuggerPanel.visible) debuggerPanel.refresh();
 };
 $('vol').oninput = (e) => audio.setVolume(e.target.value / 100);
+
+// pause/play UI stays in sync no matter who paused (toolbar, debugger, tab switch)
+player.onPauseUi = (running) => {
+  $('btn-pause').textContent = running ? '⏸ 暂停' : '▶ 继续';
+};
 
 // keyboard shortcuts: pause with P; also start audio ctx on first key
 window.addEventListener('keydown', (e) => {

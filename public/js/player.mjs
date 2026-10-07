@@ -25,6 +25,7 @@ export class Player {
     // fill alpha once; core writes ABGR little-endian directly
     const d = this.image.data;
     for (let i = 3; i < d.length; i += 4) d[i] = 0xFF;
+    this.pxView = new Uint32Array(d.buffer); // cached view — render() runs 60x/s
     this.audio = audio;
     this.console = null;
     this.running = false;
@@ -33,7 +34,9 @@ export class Player {
     this.last = 0;
     this.turbo = false;
     this.onFrame = null;
-    this.keys = 0;
+    this.keys = 0;      // combined keyboard|gamepad bits, fed to the console
+    this.kbKeys = 0;    // keyboard-only bits
+    this.padBits = 0;   // gamepad-only bits (recomputed every frame)
     this.rewindRing = [];
     this.rewindTimer = 0;
     this.frameCount = 0;
@@ -45,11 +48,12 @@ export class Player {
     window.addEventListener('keydown', (e) => {
       if (this.handleSpecial(e)) return;
       const b = KEYMAP[e.code];
-      if (b !== undefined) { this.keys |= b; e.preventDefault(); }
+      if (b !== undefined) { this.kbKeys |= b; e.preventDefault(); }
     });
     window.addEventListener('keyup', (e) => {
+      if (this.handleSpecial(e)) return;
       const b = KEYMAP[e.code];
-      if (b !== undefined) { this.keys &= ~b; e.preventDefault(); }
+      if (b !== undefined) { this.kbKeys &= ~b; e.preventDefault(); }
     });
     // hidden tabs freeze rAF; pause so audio doesn't underrun forever
     document.addEventListener('visibilitychange', () => {
@@ -87,6 +91,7 @@ export class Player {
     this.acc = 0;
     this.raf = requestAnimationFrame((t) => this.tick(t));
     this.audio.resume();
+    this.onPauseUi?.(true);
   }
 
   pause() {
@@ -94,6 +99,7 @@ export class Player {
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
     this.audio.suspend();
+    this.onPauseUi?.(false);
   }
 
   reset() {
@@ -147,6 +153,7 @@ export class Player {
 
   pollGamepad() {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    this.padBits = 0; // recompute from scratch: a disconnected pad must release its bits
     for (const pad of pads) {
       if (!pad) continue;
       const b = pad.buttons;
@@ -167,8 +174,10 @@ export class Player {
       if (ax > 0.4) v |= BTN.RIGHT;
       if (ay < -0.4) v |= BTN.UP;
       if (ay > 0.4) v |= BTN.DOWN;
-      this.keys |= v;
+      this.padBits |= v;
     }
+    // recompute the combined mask so gamepad release actually clears bits
+    this.keys = this.kbKeys | this.padBits;
   }
 
   pushAudio() {
@@ -184,10 +193,7 @@ export class Player {
   render() {
     if (!this.console) return;
     const fb = this.console.ppu.framebuffer;
-    const d = this.image.data;
-    // Uint32 view over the ImageData buffer for a fast ABGR->RGBA copy
-    const u32 = new Uint32Array(d.buffer);
-    u32.set(fb);
+    this.pxView.set(fb);
     this.ctx2d.putImageData(this.image, 0, 0);
   }
 

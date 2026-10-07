@@ -4,7 +4,7 @@
 import { readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { setFile, summary } from '../tests/harness.mjs';
+import { setFile, summary, settle } from '../tests/harness.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const testDir = join(root, '..', 'tests');
@@ -15,6 +15,7 @@ for (const f of files) {
   setFile(f);
   await import(pathToFileURL(join(testDir, f)));
 }
+await settle();
 const dt = ((Date.now() - t0) / 1000).toFixed(1);
 const okAll = summary();
 console.log(`(${files.length} files, ${dt}s)`);

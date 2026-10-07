@@ -109,6 +109,7 @@ docs/        DEMO.md 演示手册 · screenshots/ 全部为真实模拟输出
 ## 已知限制
 
 - Mapper 覆盖 0/1/2/3/4/7/11/34/66（约 85%）——SMB、SMB3、Contra、Duck Tales、Zelda 级别的经典卡带均可运行；MMC3 的 A12 检测采用每扫描线一次的近似
+- MMC1 的 PRG-RAM 禁用位被忽略（WRAM 始终可读写）；MMC3 集成 ROM 的 bank 物理布局要求代码位于固定的最后两个 8K bank
 - DMC 采样播放未模拟 CPU 取指停顿（音高/时长正确，极端时序敏感的少数游戏可能受影响）
 - PPU 精确到点但非"cycle-by-cycle 像素输出"级别（sprite overflow bug 的硬件怪癖未模拟）
 - 不支持 PAL/区域检测；帧率恒为 NTSC 60.0988Hz

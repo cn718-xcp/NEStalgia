@@ -44,3 +44,13 @@
 - M17: WebM 录像（canvas.captureStream + 音频 MediaStreamDestination，vp9/opus 优先）。实测 2.5s → 47KB。注意：画布暂停时无帧，录像前需运行中。
 - M18: 文档更新 + v1.1.0。
 - E2E 实测记录：调试器观察点命中 $00←$AF（球的 x）并自动暂停；MediaRecorder 0 字节的假故障是测试自身先把游戏暂停了。
+
+### 2026-10-07 Code review 修复（v1.1.1）
+- 评审发现并修复 4+6 项（详见当轮 code review）：
+  - P1 手柄松开不清除输入（keys 只 OR 不清零）→ 拆分 kbKeys/padBits，每帧重算合并掩码，手柄断开即释放；
+  - P1 Backspace 倒带无法停止（keyup 未路由到 handleSpecial）→ keyup 同样路由，rewinding 正确复位；
+  - P2 工作台 ROM 下存档/读档按钮崩溃（currentRom 为 null）→ 加守卫与提示；
+  - P2 游戏库 ROM 名未转义（存储型 XSS）→ esc() 转义；
+  - P3 render() 每帧分配 Uint32Array → 缓存视图；工作台 ROM 观察点接线缺失 → attach()；标签页切走后暂停按钮标签过期 → onPauseUi 统一同步；CNROM CHR bank 掩 2 位 → 4 位+模环绕；
+  - P4 死代码清除（suppressVbl/shiftBG/NEScolor）、音频块零拷贝转移、toState 帧边界前置条件注释、MMC1 PRG-RAM 简化入文档。
+- 测试基建：harness 支持异步用例；新增 server 防路径穿越回归测试与镜像地址观察点测试。119 项全绿。

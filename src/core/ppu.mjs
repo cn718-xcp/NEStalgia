@@ -81,7 +81,6 @@ export class PPU {
     this.readBuffer = 0;
     this.scanline = 261; this.dot = 0; this.oddFrame = false;
     this.frameCount = 0;
-    this.suppressVbl = false;
     this.nmiOccurred = false; this.nmiOutputPrev = false;
     // background pipeline
     this.ntByte = 0; this.atByte = 0; this.bgLo = 0; this.bgHi = 0;
@@ -129,7 +128,6 @@ export class PPU {
         const v = (this.status & 0xE0) | (this.readBuffer & 0x1F);
         this.status &= ~0x80; // clear vblank
         this.w = 0;
-        this.suppressVbl = false;
         return v;
       }
       case 4: return this.oam[this.oamAddr];
@@ -318,11 +316,6 @@ export class PPU {
     }
   }
 
-  shiftBG() {
-    this.shLoPat <<= 1; this.shHiPat <<= 1;
-    this.shLoAttr <<= 1; this.shHiAttr <<= 1;
-  }
-
   loadShifters() {
     this.shLoPat = (this.shLoPat & 0xFF00) | this.bgLo;
     this.shHiPat = (this.shHiPat & 0xFF00) | this.bgHi;
@@ -430,10 +423,6 @@ export class PPU {
     this.framebuffer[line * SCREEN_W + x] = em
       ? emphasisTable(em >> 5)[c]
       : NES_PALETTE[c];
-  }
-
-  NEScolor(c) {
-    return NES_PALETTE[c & 0x3F];
   }
 
   // OAM DMA: 256 bytes copied by the CPU stall (console drives this)
