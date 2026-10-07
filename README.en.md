@@ -4,10 +4,8 @@
 
 ![tests](https://img.shields.io/badge/tests-135%20passing-brightgreen) ![dependencies](https://img.shields.io/badge/dependencies-0-success) ![node](https://img.shields.io/badge/node-%E2%89%A520-blue) ![license](https://img.shields.io/badge/license-MIT-blue)
 
-<!-- After publishing, uncomment and replace USERNAME with your GitHub username (see docs/PUBLISH.md):
-![CI](https://github.com/USERNAME/NEStalgia/actions/workflows/ci.yml/badge.svg)
-[![Demo](https://img.shields.io/badge/demo-GitHub%20Pages-orange)](https://USERNAME.github.io/NEStalgia/)
--->
+![CI](https://github.com/cn718-xcp/NEStalgia/actions/workflows/ci.yml/badge.svg)
+[![Demo](https://img.shields.io/badge/demo-GitHub%20Pages-orange)](https://cn718-xcp.github.io/NEStalgia/)
 
 > **A complete NES (Famicom) emulator suite written from scratch** — zero third-party dependencies, pure JavaScript / Node standard library.
 >

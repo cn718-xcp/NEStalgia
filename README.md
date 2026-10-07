@@ -4,10 +4,8 @@
 
 ![tests](https://img.shields.io/badge/tests-135%20passing-brightgreen) ![dependencies](https://img.shields.io/badge/dependencies-0-success) ![node](https://img.shields.io/badge/node-%E2%89%A520-blue) ![license](https://img.shields.io/badge/license-MIT-blue)
 
-<!-- 发布到 GitHub 后取消注释，并把 USERNAME 替换为你的 GitHub 用户名（见 docs/PUBLISH.md）：
-![CI](https://github.com/USERNAME/NEStalgia/actions/workflows/ci.yml/badge.svg)
-[![Demo](https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%20Demo-GitHub%20Pages-orange)](https://USERNAME.github.io/NEStalgia/)
--->
+![CI](https://github.com/cn718-xcp/NEStalgia/actions/workflows/ci.yml/badge.svg)
+[![Demo](https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%20Demo-GitHub%20Pages-orange)](https://cn718-xcp.github.io/NEStalgia/)
 
 > **从零编写的 NES（FC）模拟器完整套件** — 零第三方依赖，纯 JavaScript / Node 标准库。
 >
