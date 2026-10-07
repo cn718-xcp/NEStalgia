@@ -1,6 +1,6 @@
 {
   "name": "nestalgia",
-  "version": "1.0.0",
+  "version": "1.1.2",
   "description": "NES/FC emulator suite written from scratch: 6502 CPU, 2C02 PPU, 2A03 APU, mappers, 6502 assembler, debugger UI and a homebrew game. Zero dependencies.",
   "type": "module",
   "license": "MIT",

@@ -54,3 +54,15 @@
   - P3 render() 每帧分配 Uint32Array → 缓存视图；工作台 ROM 观察点接线缺失 → attach()；标签页切走后暂停按钮标签过期 → onPauseUi 统一同步；CNROM CHR bank 掩 2 位 → 4 位+模环绕；
   - P4 死代码清除（suppressVbl/shiftBG/NEScolor）、音频块零拷贝转移、toState 帧边界前置条件注释、MMC1 PRG-RAM 简化入文档。
 - 测试基建：harness 支持异步用例；新增 server 防路径穿越回归测试与镜像地址观察点测试。119 项全绿。
+
+### 2026-10-07 第二轮自主 code review 修复(v1.1.2)
+- 评审方法:通读核心 5 文件 + 全部前端/脚本,Node 直跑核心复现周期类问题,真实浏览器验证输入捕获与服务端遍历。发现 5+5 项,逐条修复:
+  - P1 键盘捕获吞编辑器输入:player 的 window 级 keydown 对 KEYMAP 命中键无条件 preventDefault,工作台编辑器打不出 x/z/j/k、换不了行(实测 7 键被吞);运行过 ROM 后 Backspace 触发倒带、P 误触暂停。修复:keydown 对可编辑目标(input/textarea/select/contentEditable)放行;keyup 保留不守卫,防止按住时切焦点导致卡键。浏览器复验:编辑区全放行、游戏区热键照常捕获、无卡键。
+  - P2 server 路径检查缺分隔符:`startsWith(normalize(base))` 会放行前缀同名兄弟目录(实测 `/js/..%2f..%2fpublic-notes%2fsecret.txt` 返回 TOPSECRET)。修复:要求 `base + sep` 前缀;404 不再回显含绝对路径的 e.message;回归测试真实创建 public-notes/ 复现两条向量。
+  - P2 音频采样率失配:APU 产样 47100/s vs 设备 48000/s,缺口 ~900 样本/s,16384 环形缓冲 ~18s 耗尽后周期性欠载。修复:AudioContext 固定 `sampleRate: 47100`(拒绝非标速率时回退),浏览器实测 ctx.sampleRate=47100。
+  - P2 观察点越过 reset 失效:reset() 重建 watchWrites 并清 onWatchHit,调试器 attach 的 Set 被孤儿化(实测引用不等)。修复:reset 不再触碰这两个钩子;新增回归测试。
+  - P3 非法 RMW (d),y 周期:SLO/RLA/SRE/RRA/DCP/ISB 的 0x13/33/53/73/D3/F3 实测跨页 9 周期,真机固定 8。修复:惩罚表中该 6 项置 false;对照组 LAX (d),y 跨页 6 周期不变。
+  - P3 存档状态瘦身:apu.toState 剔除 8192 浮点 sampleBuf/头尾指针(倒带环 180 份 × 每份 8192 数组的内存浪费);播放环跨存档保持活性。
+  - P3 DMA 精度与卫生:OAM DMA 改为 513/514 周期(奇时钟对齐周期,反馈进 cpu.cycles 保持相位自洽);DMA/DMC 总线取数走新的 console.dmaRead——$2000-$3FFF 段不再误触 $2002 清 vblank。
+  - 小项:pushAudio 复用暂存缓冲、worklet 欠载消息按持续段节流、cpu.halted 死字段、调试器断点标注"每帧末检查 PC"。
+- 基准不变(~430-460fps);测试 119 → 135 项全绿;package.json 版本与 tag 同步。
