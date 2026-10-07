@@ -1,0 +1,40 @@
+name: Deploy demo to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # scripts/server.mjs maps the URL prefixes /core/ and /lib/ onto src/
+      # at request time; GitHub Pages is purely static, so materialize the
+      # same layout into public/ before upload
+      - name: Materialize /core /lib /roms into public/
+        run: |
+          cp -r src/core public/core
+          cp -r src/lib public/lib
+          cp -r roms public/roms
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - uses: actions/deploy-pages@v4
+        id: deployment
