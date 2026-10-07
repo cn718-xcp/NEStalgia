@@ -1,7 +1,7 @@
 // Hardware debugger panel: CPU state, live disassembly with breakpoints,
 // memory hex viewer, pattern-table / nametable / OAM / palette viewers.
-import { disassemble } from '/lib/disasm.mjs';
-import { SCREEN_W, SCREEN_H, NES_PALETTE } from '/core/ppu.mjs';
+import { disassemble } from '../lib/disasm.mjs';
+import { SCREEN_W, SCREEN_H, NES_PALETTE } from '../core/ppu.mjs';
 
 const FLAGS = ['C', 'Z', 'I', 'D', 'B', 'U', 'V', 'N'];
 

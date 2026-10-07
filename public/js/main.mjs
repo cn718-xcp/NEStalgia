@@ -155,7 +155,7 @@ async function ensureBundled() {
   const existing = await getRom(id);
   if (existing) return;
   try {
-    const res = await fetch('/roms/starfall.nes');
+    const res = await fetch('roms/starfall.nes');
     const data = new Uint8Array(await res.arrayBuffer());
     await putRom({ id, name: 'STARFALL ★ 自制游戏', mapper: 0, size: data.length, added: 0, builtin: true }, data);
   } catch { /* dev server without roms/ — ignore */ }

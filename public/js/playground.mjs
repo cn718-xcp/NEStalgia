@@ -1,7 +1,7 @@
 // Assembly playground: live 6502 editing → the built-in assembler (the very
 // same src/lib/asm.mjs used for all project test ROMs) → instant play.
-import { assemble, buildINES } from '/lib/asm.mjs';
-import { buildPlaygroundCHR, DEMOS } from '/lib/demos.mjs';
+import { assemble, buildINES } from '../lib/asm.mjs';
+import { buildPlaygroundCHR, DEMOS } from '../lib/demos.mjs';
 
 const $ = (id) => document.getElementById(id);
 

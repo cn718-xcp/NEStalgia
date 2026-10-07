@@ -39,8 +39,9 @@
 ## 常见问题
 
 - **为什么 Pages 不能直接从仓库根目录部署?**
-  前端以绝对路径 `/core/*.mjs`、`/lib/*.mjs`、`/roms/*.nes` 取资源,本地由 `scripts/server.mjs` 在请求时映射到 `src/` 与 `roms/`;
-  Pages 是纯静态托管、无法做 URL 映射。`deploy-pages.yml` 在部署前把 `src/core`、`src/lib`、`roms` 复制进 `public/`,物化出相同布局。
+  前端资源引用全部为**相对路径**(静态 import 相对模块自身、fetch/worklet 相对页面,因此天然兼容 Pages 的 `/<repo>/` 子路径)。
+  本地由 `scripts/server.mjs` 在请求时把 `/core/`、`/lib/` 映射到 `src/`,`/roms/` 映射到 `roms/`;Pages 是纯静态托管、无法做 URL 映射,
+  所以 `deploy-pages.yml` 在部署前把 `src/core`、`src/lib`、`roms` 复制进 `public/`,物化出相同布局。
 
 - **.mjs 的 MIME 有问题吗?**
   GitHub Pages 对 `.mjs` 返回合法 JS MIME。若控制台报 MIME 错误,多为 CDN 缓存未更新,等几分钟或强制刷新。

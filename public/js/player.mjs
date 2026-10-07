@@ -1,7 +1,7 @@
 // Emulation player: rAF-paced frame loop (60.0988 Hz NTSC), input handling,
 // save states, rewind ring, screenshots.
-import { Console } from '/core/console.mjs';
-import { SCREEN_W, SCREEN_H } from '/core/ppu.mjs';
+import { Console } from '../core/console.mjs';
+import { SCREEN_W, SCREEN_H } from '../core/ppu.mjs';
 
 export const FRAME_MS = 1000 / 60.0988;
 

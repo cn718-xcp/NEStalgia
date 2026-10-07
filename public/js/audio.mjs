@@ -24,7 +24,7 @@ export class AudioManager {
     } catch {
       this.ctx = new AudioContext(); // ancient engines: fall back to drift
     }
-    await this.ctx.audioWorklet.addModule('/audio/worklet.js');
+    await this.ctx.audioWorklet.addModule('audio/worklet.js');
     this.node = new AudioWorkletNode(this.ctx, 'nes-output', { outputChannelCount: [1] });
     this.node.port.onmessage = (e) => { if (e.data === 'underrun') this.underruns++; };
     this.gain = this.ctx.createGain();
