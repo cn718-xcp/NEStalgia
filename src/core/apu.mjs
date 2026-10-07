@@ -43,7 +43,6 @@ class Pulse {
       case 3:
         this.timerPeriod = (this.timerPeriod & 0xFF) | ((v & 7) << 8);
         if (this.enabled) this.lengthCounter = LENGTH_TABLE[(v >> 3) & 0x1F];
-        this.timer = this.timerPeriod;
         this.dutyPos = 0;
         this.envRestart = true;
         break;
@@ -122,7 +121,13 @@ class Triangle {
       }
     }
   }
-  tickQuarter() { if (!this.control) this.linearCounter = this.linearReload; }
+  tickQuarter() {
+    if (this.control) {
+      this.linearCounter = this.linearReload;
+    } else if (this.linearCounter > 0) {
+      this.linearCounter--;
+    }
+  }
   tickLength() { if (!this.control && this.lengthCounter > 0) this.lengthCounter--; }
   output() {
     if (!this.enabled || this.lengthCounter === 0 || this.linearCounter === 0) return 0;
@@ -248,7 +253,7 @@ class DMC {
       }
     }
   }
-  output() { return this.playing && !this.silence ? this.delta : this.directLoad; }
+  output() { return this.delta; }
   toState() { const { readFn, ...rest } = this; return { ...rest }; }
   fromState(s) { Object.assign(this, s); this.readFn = null; }
 }
@@ -362,14 +367,22 @@ export class APU {
   }
 
   mix() {
-    // NESdev mixer approximation: p1/p2 normalized 0..1
+    // NESdev non-inverting mixer, normalized so silence = 0
     const p1 = this.pulse1.output() / 15, p2 = this.pulse2.output() / 15;
     const tri = this.triangle.output() / 15, noi = this.noise.output() / 15;
     const dmc = this.dmc.output() / 128;
     const pulseOut = 95.88 / (100 + 100 * (p1 + p2));
     const tnd = 163.67 * tri + 122.41 * noi + 142.04 * dmc;
     const tndOut = 159.79 / (100 + tnd);
-    return (pulseOut - 0.5) * 1.7 + (tndOut - 0.5) * 1.3;
+    // Subtract silence baselines and normalize
+    const pulse_silence = 0.9588;  // 95.88/100
+    const pulse_max = 0.3196;      // 95.88/300 (when p1+p2=2)
+    const pulse_norm = (pulseOut - pulse_silence) / (pulse_max - pulse_silence);
+    const tnd_silence = 1.5979;    // 159.79/100
+    const tnd_max = 0.3026;        // 159.79/528.12 (when tri+noi+dmc=max)
+    const tnd_norm = (tndOut - tnd_silence) / (tnd_max - tnd_silence);
+    // Both norms in [-1, 0]. Scale to fit in [-1, 1].
+    return (pulse_norm * 1.7 + tnd_norm * 1.3) * 0.33;
   }
 
   pushSample(s) {
