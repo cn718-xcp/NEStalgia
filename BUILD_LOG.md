@@ -96,3 +96,14 @@
   5. 分模块提交 ×3;版本保持 v1.1.2(纯文档/基建,无代码变更)。
 - 验证:135 项测试全绿(文档改动不触码,复跑确认);未做浏览器验证(无 UI 改动)。
 - **留给用户的一次性动作**:建 GitHub 仓 → push → Settings→Pages 选 GitHub Actions → README 徽章替换 USERNAME →(可选)提交 jsemu/awesome-nesdev 收录。
+
+### 2026-10-07 可推送状态全面审计:修复 Pages 子路径致命 bug + 移除 IDE 配置(v1.1.2)
+- 审计范围:git 跟踪文件清单、大文件、前端资源路径、敏感串、测试基线、工作流有效性。发现 2 个必修项,均已修复并验证:
+  1. **P0 前端全绝对路径 → Pages 子路径下必挂**:index.html(`href="/css/style.css"`、`src="/js/main.mjs"`)、player/debugger/playground(`/core/…`、`/lib/…` 静态 import)、main.mjs(`fetch('/roms/starfall.nes')`)、audio.mjs(`addModule('/audio/worklet.js')`)共 10 处。项目 Pages 部署在 `user.github.io/<repo>/` 子路径,绝对路径会解析到域名根,上线即全 404(上轮 PUBLISH.md 方案的隐藏缺陷,<base> 也救不了绝对路径)。修复:静态 import 改相对模块自身(`../core/…`、`../lib/…`),fetch/worklet/css/js 改相对文档(`roms/…`、`audio/worklet.js`、`css/…`、`js/…`)——本地服务器行为不变,Pages 子路径天然兼容。
+  2. **P2 `.idea/` 被 git 跟踪**(modules.xml/nestalgia.iml/vcs.xml)→ `git rm -r --cached .idea` + .gitignore 增加 `.idea/`。
+- 其余审计项全部通过:无密钥/localhost 泄漏、最大文件仅 330KB 截图(仓库总量极小)、无版权 ROM 入库(starfall.nes 40KB 为自制)、README 双语引用的 5 张截图全部存在、两个工作流 actions 版本现行(checkout@v4/setup-node@v4/configure-pages@v5/upload-pages-artifact@v3/deploy-pages@v4)。
+- **三层验证**:
+  1. 135 项测试全绿(改动后复跑);
+  2. **本地模拟 Pages 子路径部署**:tmp/pages-sim/NEStalgia/(public + 物化 core/lib/roms)+ 一次性纯静态服务器(8613 端口),curl 10 个关键 URL 全部 200 且 MIME 正确(.mjs→text/javascript);
+  3. **真实浏览器 E2E**(IAB):打开 `http://localhost:8613/NEStalgia/` → 游戏库渲染、STARFALL 卡片出现(相对 fetch + IndexedDB 成功)→ 点击卡片 → 模拟器启动,canvas 渲染出 STARFALL 标题画面(星空+PRESS START),调试器断点/观察点/CHR/命名表/OAM/调色板面板全部就位。
+- 结论:**达到可推送状态**。PUBLISH.md FAQ 已同步相对路径与新验证结论。
