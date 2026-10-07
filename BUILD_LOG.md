@@ -73,3 +73,16 @@
   30 秒随机输入 soak 无崩溃、游戏内存档状态往返正常。
 - 无头 ~410fps(7× 实时);浏览器 60fps 满速,前台音频零欠载。ROM 在 roms/nova.nes(不入库,见 .gitignore)。
 - 已知边界:面板/标签页被重度节流时 rAF 变慢导致音频欠载计数上升(visibilitychange 只在全隐藏时暂停)——属环境节流而非模拟器缺陷。
+
+### 2026-10-07 发布前竞品调研 + 优化(⚠ 中断保存点,进行中)
+- 任务:检索 GitHub 同类 NES 模拟器项目、分析利弊并优化、评估能否作为个人项目发布。调研与基线验证已完成,优化实施到一半被用户中断,本条为接续保存点。
+- **调研结论**(全文存档 `docs/github-competitive-research.md`,含来源 URL):同类项目众多(jsnes ~6.4k / EmulatorJS ~4.2k / WebNES 117 / nes-js 224 / nests 95),但 NEStalgia 差异化明确——唯一声明通过 Klaus 认证的 JS 模拟器、唯一"模拟器+汇编器+调试器+自制游戏"全自研套件、135 项测试同类最多;**结论:可以发布**。短板:无英文 README、无 LICENSE、无 CI、无在线 Demo、README 仅 1 张截图、多处数据过时。
+- **基线验证**:135 项测试全绿(2.9s);bench 415-445fps(README "约 430fps" 仍准确);实际代码 7,142 行(src 2555 + tools 1099 + public 1456 + scripts 213 + tests 1819)。
+- **README 过时数据清单(待修)**:头部"5 种 Mapper"→9 种;快速开始"mapper 0/1/2/3/7"→0/1/2/3/4/7/11/34/66;"117 项"→135;目录节"7 个测试文件,98 项断言"→10 文件 135 项且 src/lib 漏列 asm/demos/font;架构图 "Mapper 0/1/2/3/7" 过时;"约 9,000 行"→约 7,100(诚实数字)。
+- **已完成**:LICENSE(MIT)已创建,版权人暂写 "The NEStalgia Authors"(用户可自行替换真名);调研报告存档;server.mjs 复核确认 /core/ /lib/ 是虚拟前缀映射 src/ ——GitHub Pages 直发布会 404,需部署工作流物化目录。
+- **待办(下次会话按序执行)**:
+  1. README.md:顶部语言切换(中文 · English)+ 静态徽章(tests 135 passing / dependencies 0 / node ≥20 / MIT)+ 修上述全部过时数据 + 底部截图墙(docs/screenshots/ 已有 7 张,选 starfall-title/play、web-player-debugger、test-sprites 四张做 2×2 表格)。
+  2. README.en.md:全文英文版(与修正后的中文版同步,同截图路径)。
+  3. `.github/workflows/ci.yml`:node 20/22/24 矩阵跑 `node scripts/run-tests.mjs`(klaus 需 tmp/klaus.bin,不入 CI);`deploy-pages.yml`:checkout → `cp -r src/core public/core && cp -r src/lib public/lib && cp -r roms public/roms` → configure-pages/upload-pages-artifact(path: public)/deploy-pages@v4,触发 main push + workflow_dispatch。
+  4. docs/PUBLISH.md:发布指南(建仓→推送→Settings→Pages→Source: GitHub Actions→部署后验证 .mjs MIME 与 /core/ 可达;repo topics 建议 nes-emulator/6502/emulator/javascript/retro/homebrew/famicom/assembler;CI 徽章 URL 替换 USERNAME;合规要点:模拟器本身合法、仓库只含自制 STARFALL ROM 无任何版权 ROM、Klaus 二进制已 gitignore、Nova ROM 已 gitignore)。
+  5. 分模块提交:①LICENSE+README 修正+双语 ②workflows ③PUBLISH.md;BUILD_LOG 收尾;版本保持 v1.1.2(纯文档/基建)。
