@@ -15,7 +15,15 @@ export class AudioManager {
       if (this.ctx.state === 'suspended') await this.ctx.resume();
       return;
     }
-    this.ctx = new AudioContext();
+    // Pin the context to the APU's native rate (1789773/38 ≈ 47.1 kHz).
+    // At the device default (typically 48 kHz) the worklet consumes ~900
+    // more samples/s than the APU produces, so the ring drains after ~18s
+    // and playback degenerates into periodic held-sample glitches.
+    try {
+      this.ctx = new AudioContext({ sampleRate: 47100 });
+    } catch {
+      this.ctx = new AudioContext(); // ancient engines: fall back to drift
+    }
     await this.ctx.audioWorklet.addModule('/audio/worklet.js');
     this.node = new AudioWorkletNode(this.ctx, 'nes-output', { outputChannelCount: [1] });
     this.node.port.onmessage = (e) => { if (e.data === 'underrun') this.underruns++; };
