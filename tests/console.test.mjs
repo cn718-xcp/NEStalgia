@@ -96,3 +96,19 @@ test('RAM write watchpoints fire through the console hook', () => {
   c.runFrames(2);
   eq(hits.length, n, 'removed watchpoints stop firing');
 });
+
+test('watchpoints survive console reset', () => {
+  // regression: reset() used to replace watchWrites with a fresh Set and null
+  // onWatchHit, silently killing debugger watchpoints after ⟲ reset
+  const c = new Console(makeColorBars().rom);
+  const dbgWatchSet = new Set([0x05]); // the debugger owns this instance
+  let hits = 0;
+  c.watchWrites = dbgWatchSet; // debugger attach()
+  c.onWatchHit = () => hits++;
+  c.cpuWrite(0x05, 0x11);
+  eq(hits, 1);
+  c.reset();
+  eq(c.watchWrites, dbgWatchSet, 'reset keeps the debugger-attached set');
+  c.cpuWrite(0x05, 0x22);
+  eq(hits, 2, 'watchpoint still fires after reset');
+});

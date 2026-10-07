@@ -32,9 +32,9 @@ export class Console {
     this.controllers = [0, 0];
     this.strobe = 0;
     this.shiftIdx = [0, 0];
-    this.watchWrites = new Set();
+    // watchWrites/onWatchHit are intentionally kept: the debugger owns them
+    // (attach()) and watchpoints must survive ⟲ reset
     this.dmaPending = -1;
-    this.onWatchHit = null;
     this.ppu.onA12 = this.cart.clockIrq ? () => this.cart.clockIrq() : null;
     this.cpu.reset();
   }
