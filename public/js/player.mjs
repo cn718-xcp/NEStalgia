@@ -17,6 +17,13 @@ const KEYMAP = {
   ArrowUp: BTN.UP, ArrowDown: BTN.DOWN, ArrowLeft: BTN.LEFT, ArrowRight: BTN.RIGHT,
 };
 
+// keys aimed at text fields belong to the text field, not the controller port
+export function inEditableTarget(e) {
+  const t = e.target;
+  return !!(t && typeof t === 'object' &&
+    (t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.tagName === 'SELECT'));
+}
+
 export class Player {
   constructor(canvas, audio) {
     this.canvas = canvas;
@@ -46,6 +53,9 @@ export class Player {
     this.onSaveSRAM = null;
     this.onBatteryFlush = null;
     window.addEventListener('keydown', (e) => {
+      // text fields (playground editor, debugger inputs) get their keys back;
+      // keyup below is deliberately unguarded so held bits can never stick
+      if (inEditableTarget(e)) return;
       if (this.handleSpecial(e)) return;
       const b = KEYMAP[e.code];
       if (b !== undefined) { this.kbKeys |= b; e.preventDefault(); }
@@ -53,7 +63,7 @@ export class Player {
     window.addEventListener('keyup', (e) => {
       if (this.handleSpecial(e)) return;
       const b = KEYMAP[e.code];
-      if (b !== undefined) { this.kbKeys &= ~b; e.preventDefault(); }
+      if (b !== undefined) this.kbKeys &= ~b;
     });
     // hidden tabs freeze rAF; pause so audio doesn't underrun forever
     document.addEventListener('visibilitychange', () => {

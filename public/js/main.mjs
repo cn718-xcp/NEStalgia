@@ -1,5 +1,5 @@
 // NEStalgia web app controller: library, playback, persistence.
-import { Player, BTN } from './player.mjs';
+import { Player, BTN, inEditableTarget } from './player.mjs';
 import { AudioManager } from './audio.mjs';
 import { Debugger } from './debugger.mjs';
 import { Playground } from './playground.mjs';
@@ -259,6 +259,7 @@ player.onPauseUi = (running) => {
 
 // keyboard shortcuts: pause with P; also start audio ctx on first key
 window.addEventListener('keydown', (e) => {
+  if (inEditableTarget(e)) return;
   if (e.code === 'KeyP' && !e.repeat && player.console) $('btn-pause').click();
 }, { capture: false });
 
