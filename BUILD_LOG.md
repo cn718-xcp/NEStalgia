@@ -66,3 +66,10 @@
   - P3 DMA 精度与卫生:OAM DMA 改为 513/514 周期(奇时钟对齐周期,反馈进 cpu.cycles 保持相位自洽);DMA/DMC 总线取数走新的 console.dmaRead——$2000-$3FFF 段不再误触 $2002 清 vblank。
   - 小项:pushAudio 复用暂存缓冲、worklet 欠载消息按持续段节流、cpu.halted 死字段、调试器断点标注"每帧末检查 PC"。
 - 基准不变(~430-460fps);测试 119 → 135 项全绿;package.json 版本与 tag 同步。
+
+### 2026-10-07 兼容性实弹验证:Nova the Squirrel(mapper 1 商业级 homebrew)
+- 第三方开源平台游戏(GPL,作者免费发布,256KB PRG + CHR RAM + 电池 SRAM)在 NEStalgia 上完整可玩:
+  MMC1 初始化、CHR RAM 字库上传、标题/主菜单/世界地图/关卡菜单链路、第 1 关实机跑跳(碰撞/敌人/收集品/卷轴/视差)、
+  30 秒随机输入 soak 无崩溃、游戏内存档状态往返正常。
+- 无头 ~410fps(7× 实时);浏览器 60fps 满速,前台音频零欠载。ROM 在 roms/nova.nes(不入库,见 .gitignore)。
+- 已知边界:面板/标签页被重度节流时 rAF 变慢导致音频欠载计数上升(visibilitychange 只在全隐藏时暂停)——属环境节流而非模拟器缺陷。

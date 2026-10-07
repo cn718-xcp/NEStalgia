@@ -1,6 +1,7 @@
-node_modules/
-.npm-cache/
-tmp/
 *.log
 .DS_Store
+.npm-cache/
+/roms/nova.nes
 Thumbs.db
+node_modules/
+tmp/
