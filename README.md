@@ -1,9 +1,18 @@
 # NEStalgia
 
+**中文** · [**English**](README.en.md)
+
+![tests](https://img.shields.io/badge/tests-135%20passing-brightgreen) ![dependencies](https://img.shields.io/badge/dependencies-0-success) ![node](https://img.shields.io/badge/node-%E2%89%A520-blue) ![license](https://img.shields.io/badge/license-MIT-blue)
+
+<!-- 发布到 GitHub 后取消注释，并把 USERNAME 替换为你的 GitHub 用户名（见 docs/PUBLISH.md）：
+![CI](https://github.com/USERNAME/NEStalgia/actions/workflows/ci.yml/badge.svg)
+[![Demo](https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%20Demo-GitHub%20Pages-orange)](https://USERNAME.github.io/NEStalgia/)
+-->
+
 > **从零编写的 NES（FC）模拟器完整套件** — 零第三方依赖，纯 JavaScript / Node 标准库。
 >
 > 6502 CPU（通过 Klaus Dormann 功能测试金标准认证）· 2C02 PPU 逐点渲染管线 · 2A03 APU 音频合成 ·
-> 5 种卡带 Mapper · 自研 6502 汇编器 · 自制 6502 汇编游戏《STARFALL》 · 硬件级调试器 Web 前端。
+> 9 种卡带 Mapper · 自研 6502 汇编器 · 自制 6502 汇编游戏《STARFALL》 · 硬件级调试器 Web 前端。
 
 ![游戏运行画面](docs/screenshots/web-player-debugger.png)
 
@@ -20,13 +29,13 @@ NEStalgia 不是"又一个 Web 应用"——它是一台**用软件精确重建�
 | **APU** (`src/core/apu.mjs`) | 双脉冲（占空比/包络/滑音/长度计数器）、三角波（线性计数器）、噪声（15 位 LFSR）、DMC 增量调制（经总线取样本）、4/5 步帧序列器与帧 IRQ、NESdev 混音公式，~47kHz 输出 |
 | **卡带** (`src/core/cart.mjs`) | iNES 解析（含 NES 2.0 检测）、Mapper **0 / 1 / 2 / 3 / 4 (MMC3+扫描线IRQ) / 7 / 11 / 34 / 66**（约覆盖 85% 游戏库）、电池存档 PRG-RAM、CHR-RAM |
 | **主机** (`src/core/console.mjs`) | 总线仲裁、PPU:CPU 3:1 点时序、OAM DMA（513 周期停顿）、手柄移位寄存器、整机确定性存档 |
-| **汇编器** (`tools/asm.mjs`) | 两遍扫描、表达式求值器（`<` `>` 取低/高字节、`<<` `>>`、位运算）、正向引用、编码表直接派生自 CPU 核心（永不失配）、iNES 构建器 |
+| **汇编器** (`src/lib/asm.mjs`) | 两遍扫描、表达式求值器（`<` `>` 取低/高字节、`<<` `>>`、位运算）、正向引用、编码表直接派生自 CPU 核心（永不失配）、iNES 构建器 |
 | **自制游戏** (`tools/game.mjs`) | 《STARFALL》——完整 6502 汇编游戏：NMI 主循环、LFSR 随机数、碰撞/无敌帧/计分、APU 音效。由本汇编器汇编，在本模拟器上运行 |
 | **Web 前端** (`public/`) | 游戏库（IndexedDB）、60.1Hz 帧步进、AudioWorklet 音频、手柄 API、即时存档/读档、**按住 Backspace 倒带**、CRT 滤镜、截图导出、**WebM 录像（画面+声音）** |
 | **汇编工作台** (`public/js/playground.mjs`) | 浏览器内编写 6502 汇编 → 自研汇编器现场编译 → 本机模拟器即刻运行；三个内置演示程序（HELLO / BOUNCE / INPUT）同时是无头流水线测试 |
 | **调试器** (`public/js/debugger.mjs`) | 实时反汇编（点击行设断点）、**内存写入观察点**（命中显示地址/值/PC）、CPU 寄存器/标志、内存十六进制查看、图案表/命名表/OAM/调色板可视化、单步/帧步进 |
 
-**代码量约 9,000 行，npm 依赖：0 个。**
+**代码量约 7,100 行（产品代码约 5,300 行 + 测试约 1,800 行），npm 依赖：0 个。**
 
 ---
 
@@ -39,13 +48,13 @@ node scripts/server.mjs
 ```
 
 - 内置自制游戏《STARFALL》，点卡片即玩
-- 把你自己的 `.nes` 文件（支持 mapper 0/1/2/3/7）拖进页面即可加载
+- 把你自己的 `.nes` 文件（支持 mapper 0/1/2/3/4/7/11/34/66）拖进页面即可加载
 - 键位：**方向键**=十字键 · **X/J**=A · **Z/K**=B · **Enter**=START · **Shift**=SELECT · **Backspace 按住**=倒带 · **P**=暂停
 
 ### 测试
 
 ```bash
-node scripts/run-tests.mjs     # 117 项单元/集成测试
+node scripts/run-tests.mjs     # 135 项单元/集成测试
 node scripts/bench.mjs         # 性能基准（约 430fps 无头运行，7 倍实时）
 node scripts/klaus.mjs         # Klaus Dormann 6502 功能测试（需 tmp/klaus.bin，见脚本头注释）
 node tools/build-roms.mjs      # 重新构建 roms/ 与 docs/screenshots/
@@ -54,6 +63,17 @@ node tools/build-roms.mjs      # 重新构建 roms/ 与 docs/screenshots/
 测试覆盖：CPU 全指令集语义与精确周期、寻址模式边界（零页环绕、跨页惩罚）、PPU 寄存器行为与整帧像素断言、
 Mapper 切换语义、APU 长度/包络/帧 IRQ/DMC 取数、汇编器编码正确性、自制游戏全状态机（标题→游戏→受伤→无敌→
 游戏结束→返回）、以及 **整机存档确定性重放**（快照后重放与原运行逐像素一致）。
+
+---
+
+## 截图
+
+全部为模拟器真实渲染输出（`node tools/build-roms.mjs` 自动生成）：
+
+| | |
+|---|---|
+| ![STARFALL 标题画面](docs/screenshots/starfall-title.png) | ![STARFALL 游戏中](docs/screenshots/starfall-play.png) |
+| ![游戏库首屏](docs/screenshots/web-first-run.png) | ![精灵测试 ROM（像素级断言用）](docs/screenshots/test-sprites.png) |
 
 ---
 
@@ -75,7 +95,7 @@ Mapper 切换语义、APU 长度/包络/帧 IRQ/DMC 取数、汇编器编码正�
 │       │      总线: RAM 2KB / 手柄 / OAM DMA / $4014        │
 │       └──────────────┬────────────────────────────────────┘
 │                ┌─────▼─────┐
-│                │ Cartridge │  iNES + Mapper 0/1/2/3/7 + 电池 SRAM
+│                │ Cartridge │  iNES + Mapper 0/1/2/3/4/7/11/34/66 + 电池 SRAM
 │                └───────────┘
 └──────────────────────────────────────────────────────────┘
 ```
@@ -84,13 +104,13 @@ Mapper 切换语义、APU 长度/包络/帧 IRQ/DMC 取数、汇编器编码正�
 
 ```
 src/core/    cpu / ppu / apu / cart / console —— 纯逻辑，浏览器与 Node 通用
-src/lib/     disasm.mjs —— 反汇编器（调试器与测试共用）
-tools/       asm.mjs 汇编器 · game.mjs 自制游戏 · testroms.mjs 测试 ROM · build-roms.mjs 构建脚本
-public/      Web 前端（index.html + 原生 ES Modules）
-tests/       7 个测试文件，98 项断言（自研顺序执行器，规避 node --test 挂起问题）
-scripts/     server.mjs 静态服务器 · run-tests.mjs · klaus.mjs · png.mjs（零依赖 PNG 编码器）
+src/lib/     asm.mjs 汇编器 · disasm.mjs 反汇编器 · demos.mjs 演示程序 · font.mjs 字体（前端、工具与测试共用）
+tools/       game.mjs 自制游戏源码 · testroms.mjs 测试 ROM 生成 · build-roms.mjs 构建脚本
+public/      Web 前端（index.html + 原生 ES Modules，无构建步骤）
+tests/       10 个测试文件，135 项断言（自研顺序执行器，规避 node --test 挂起问题）
+scripts/     server.mjs 静态服务器 · run-tests.mjs · bench.mjs · klaus.mjs · png.mjs（零依赖 PNG 编码器）
 roms/        starfall.nes —— 可在真机硬件上运行的自制游戏 ROM（理论上）
-docs/        DEMO.md 演示手册 · screenshots/ 全部为真实模拟输出
+docs/        DEMO.md 演示手册 · github-competitive-research.md 同类项目调研 · screenshots/ 全部为真实模拟输出
 ```
 
 ---
@@ -116,4 +136,5 @@ docs/        DEMO.md 演示手册 · screenshots/ 全部为真实模拟输出
 
 ## 许可
 
-MIT。Klaus Dormann 功能测试二进制遵循其原仓库许可，仅用于本地验证、不入库。
+MIT（见 [LICENSE](LICENSE)）。仓库不含任何版权 ROM —— `roms/` 仅收录自制游戏《STARFALL》。
+Klaus Dormann 功能测试二进制遵循其原仓库许可，仅用于本地验证、不入库。
