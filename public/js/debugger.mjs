@@ -28,7 +28,7 @@ export class Debugger {
           <button id="dbg-frame">🎞 帧步进</button>
           <label><input type="checkbox" id="dbg-follow" checked> 跟随 PC</label>
         </div>
-        <h3>断点</h3>
+        <h3>断点 <span class="hint">每帧末检查 PC</span></h3>
         <div class="bp-row">
           <input id="dbg-bp-input" placeholder="PC 如 8000" maxlength="4">
           <button id="dbg-bp-add">添加</button>

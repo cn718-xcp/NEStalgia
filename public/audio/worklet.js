@@ -24,6 +24,7 @@ class NESOutput extends AudioWorkletProcessor {
     for (let i = 0; i < out.length; i++) {
       let s;
       if (this.read === this.write) {
+        if (!underrun) this.port.postMessage('underrun'); // once per starved stretch
         underrun = true;
         s = this.lastSample; // hold last sample instead of hard zero
       } else {
@@ -36,7 +37,6 @@ class NESOutput extends AudioWorkletProcessor {
       this.filtered += 0.85 * (s - this.filtered);
       out[i] = this.filtered;
     }
-    if (underrun) this.port.postMessage('underrun');
     return true;
   }
 }

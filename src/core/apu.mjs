@@ -333,7 +333,7 @@ export class APU {
   }
 
   runCycles(n, console_) {
-    if (console_) this.busReader = (a) => console_.cpuRead(a);
+    if (console_) this.busReader = (a) => console_.dmaRead(a); // side-effect-free fetches
     const p1 = this.pulse1, p2 = this.pulse2, tri = this.triangle, noi = this.noise, dmc = this.dmc;
     const dmcRead = (a) => this.busRead(a);
     for (let i = 0; i < n; i++) {
@@ -398,13 +398,13 @@ export class APU {
   }
 
   toState() {
+    // The sample ring is intentionally excluded: it's playback plumbing, not
+    // machine state, and would bloat every rewind/save snapshot by 8192 floats
     return {
       pulse1: this.pulse1.toState(), pulse2: this.pulse2.toState(),
       triangle: this.triangle.toState(), noise: this.noise.toState(), dmc: this.dmc.toState(),
       frameMode: this.frameMode, irqInhibit: this.irqInhibit, frameIrq: this.frameIrq,
       frameCycles: this.frameCycles, sampleAccum: this.sampleAccum,
-      sampleHead: this.sampleHead, sampleTail: this.sampleTail,
-      sampleBuf: Array.from(this.sampleBuf),
     };
   }
   fromState(s) {
@@ -412,7 +412,6 @@ export class APU {
     this.triangle.fromState(s.triangle); this.noise.fromState(s.noise); this.dmc.fromState(s.dmc);
     this.frameMode = s.frameMode; this.irqInhibit = s.irqInhibit; this.frameIrq = s.frameIrq;
     this.frameCycles = s.frameCycles; this.sampleAccum = s.sampleAccum;
-    this.sampleHead = s.sampleHead; this.sampleTail = s.sampleTail;
-    this.sampleBuf.set(s.sampleBuf);
+    // keep the live sample ring running across a state load
   }
 }

@@ -88,8 +88,13 @@ export class Console {
     if (this.dmaPending >= 0) {
       const page = this.dmaPending;
       this.dmaPending = -1;
-      this.ppu.oamDMA(page, (a) => this.cpuRead(a));
-      total += 513;
+      this.ppu.oamDMA(page, (a) => this.dmaRead(a));
+      // 512 r/w cycles + 1 halt cycle, +1 more when the DMA starts on an odd
+      // clock (get/put alignment); fed back into cpu.cycles so the parity of
+      // subsequent DMAs stays self-consistent
+      const dmaCycles = 513 + (this.cpu.cycles & 1);
+      total += dmaCycles;
+      this.cpu.cycles += dmaCycles;
     }
     const ppu = this.ppu;
     const ticks = total * 3;
@@ -101,6 +106,16 @@ export class Console {
     this.prevNmi = nmi;
     this.cpu.irqLine = (this.apu && this.apu.irqLine) || this.cart.irqLine || false;
     return total;
+  }
+
+  // Bus reads performed by DMA engines (OAM DMA, DMC sample fetches). Unlike
+  // CPU-driven reads these must not trip side-effect registers — a fetch over
+  // $2000-$3FFF would otherwise clear the vblank flag via $2002.
+  dmaRead(addr) {
+    addr &= 0xFFFF;
+    if (addr < 0x2000) return this.ram[addr & 0x7FF];
+    if (addr < 0x8000) return 0;
+    return this.cart.cpuRead(addr);
   }
 
   runFrame() {

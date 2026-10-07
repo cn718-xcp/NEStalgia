@@ -192,7 +192,7 @@ export class Player {
 
   pushAudio() {
     if (!this.console || this.turbo || this.rewinding) return;
-    const buf = new Float32Array(1024);
+    const buf = this.audioBuf ??= new Float32Array(1024); // scratch; push() slices
     let n;
     while ((n = this.console.apu.drainSamples(buf)) > 0) {
       this.audio.push(buf.slice(0, n));

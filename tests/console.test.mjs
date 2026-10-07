@@ -43,6 +43,31 @@ test('OAM DMA copies a page through the CPU bus', () => {
   eq(c.ppu.oam[255], 7);
 });
 
+test('OAM DMA fetches avoid PPU register side effects', () => {
+  // regression: DMA reads used to go through cpuRead, so a source page in
+  // $2000-$3FFF would clear the vblank flag via a $2002 "read"
+  const c = new Console(makeColorBars().rom);
+  c.ppu.status |= 0x80; // pretend vblank is set
+  c.ppu.oamAddr = 0x00;
+  c.ppu.oamDMA(0x20, (a) => c.dmaRead(a)); // source $2000-$20FF
+  ok(c.ppu.status & 0x80, 'vblank flag survives a DMA fetch over $20xx');
+  eq(c.ppu.oam[2], 0, 'side-effect registers read as 0 through the DMA path');
+});
+
+test('OAM DMA cycle count follows the get/put alignment (513/514)', () => {
+  const c = new Console(makeColorBars().rom);
+  c.runFrames(1);
+  // hijack the PC into RAM NOPs so each step is a known 2-cycle instruction
+  c.cpu.PC = 0x0010;
+  c.ram[0x10] = 0xEA; c.ram[0x11] = 0xEA; c.ram[0x12] = 0xEA;
+  for (let i = 0; i < 3; i++) {
+    const c0 = c.cpu.cycles;
+    c.dmaPending = 0x02;
+    const total = c.stepCycles(); // NOP(2) + 513 + alignment cycle when odd
+    eq(total, 515 + (c0 & 1), `DMA step ${i} (clock parity ${c0 & 1})`);
+  }
+});
+
 test('controller shift register reads A,B,Select,Start,U,D,L,R', () => {
   const c = new Console(makeColorBars().rom);
   c.controllers[0] = 0b10110110;
@@ -71,6 +96,21 @@ test('save state determinism: snapshot + replay matches original run', () => {
   eq([...b.ppu.framebuffer.slice(0, 512)], [...a.ppu.framebuffer.slice(0, 512)]);
   eq(b.ppu.frameCount, a.ppu.frameCount);
   eq([...b.ram.slice(0, 64)], [...a.ram.slice(0, 64)]);
+});
+
+test('save states exclude the audio sample ring (rewind memory)', () => {
+  // regression: apu.toState used to carry the 8192-float sampleBuf, bloating
+  // every rewind-ring entry and IndexedDB save slot
+  const c = new Console(makeSpriteScene().rom);
+  c.runFrames(4);
+  const s = JSON.parse(JSON.stringify(c.toState()));
+  ok(!('sampleBuf' in s.apu) && !('sampleHead' in s.apu) && !('sampleTail' in s.apu),
+    'audio ring must not be serialized');
+  const b = new Console(makeSpriteScene().rom);
+  b.fromState(s);
+  eq(b.apu.pulse1.lengthCounter, c.apu.pulse1.lengthCounter, 'channel state still restored');
+  b.runFrames(1);
+  ok(b.apu.drainSamples(new Float32Array(64)) > 0, 'audio ring still produces after a load');
 });
 
 test('frame loop is bounded even for a jammed CPU', () => {

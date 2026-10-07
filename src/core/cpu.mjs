@@ -17,7 +17,6 @@ export class CPU {
     this.nmiPending = false;
     this.irqLine = false;
     this.jammed = false;
-    this.halted = false;
   }
 
   reset() {
