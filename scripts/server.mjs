@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // NEStalgia web server — zero-dependency static file server (node:http).
 import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
-import { join, normalize, resolve, extname, dirname } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { join, normalize, extname, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -36,7 +36,10 @@ const server = createServer(async (req, res) => {
     else if (path.startsWith('/lib/')) { base = join(root, 'src', 'lib'); path = path.slice('/lib'.length); }
 
     const file = normalize(join(base, path));
-    if (!file.startsWith(normalize(base))) { res.writeHead(403); res.end('forbidden'); return; }
+    // must stay *inside* base, not merely share its name prefix — otherwise a
+    // sibling like "public-notes" passes a bare startsWith(base) check
+    const baseN = normalize(base);
+    if (file !== baseN && !file.startsWith(baseN + sep)) { res.writeHead(403); res.end('forbidden'); return; }
 
     const data = await readFile(file);
     res.writeHead(200, {
@@ -45,9 +48,10 @@ const server = createServer(async (req, res) => {
       'Cross-Origin-Opener-Policy': 'same-origin',
     });
     res.end(data);
-  } catch (e) {
+  } catch {
+    // no e.message here — ENOENT text contains the server's absolute paths
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('404: ' + e.message);
+    res.end('404: not found');
   }
 });
 

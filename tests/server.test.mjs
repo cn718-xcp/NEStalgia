@@ -1,4 +1,7 @@
 import { spawn } from 'node:child_process';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Console } from '../src/core/console.mjs';
 import { makeColorBars } from '../tools/testroms.mjs';
 import { test, eq, ok } from './harness.mjs';
@@ -39,11 +42,41 @@ test('static server: traversal blocked, index served, core modules reachable', a
       const res = await fetch(BASE + evil);
       ok(res.status === 404 || res.status === 403, `blocked ${evil} (got ${res.status})`);
     }
+    // a 404 must not echo the server's absolute paths back
+    const missing = await fetch(`${BASE}/no-such-file-${Date.now()}.nes`);
+    eq(missing.status, 404);
+    ok(!(await missing.text()).includes('nestalgia'), '404 body leaks no server paths');
     // legitimate deep paths still work
     const core = await fetch(`${BASE}/core/cpu.mjs`);
     eq(core.status, 200, 'core module reachable');
     ok((await core.text()).includes('class CPU'), 'core module content sane');
   } finally {
+    srv.kill();
+  }
+});
+
+test('static server: sibling dirs sharing the base name prefix are not readable', async () => {
+  // regression: startsWith(base) without a trailing separator accepted
+  // "public-notes" as if it were inside "public" — both vectors below used
+  // to serve secret.txt with a 200
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  mkdirSync(join(root, 'public-notes'), { recursive: true });
+  writeFileSync(join(root, 'public-notes', 'secret.txt'), 'TOPSECRET');
+  const srv = spawn(process.execPath, ['scripts/server.mjs'], {
+    env: { ...process.env, PORT: String(PORT) },
+    stdio: 'ignore',
+  });
+  try {
+    ok(await waitForServer(), 'server came up');
+    for (const evil of [
+      '/js/..%2f..%2fpublic-notes%2fsecret.txt',
+      '/%2f..%2fpublic-notes%2fsecret.txt',
+    ]) {
+      const res = await fetch(BASE + evil);
+      ok(res.status === 404 || res.status === 403, `blocked ${evil} (got ${res.status})`);
+    }
+  } finally {
+    rmSync(join(root, 'public-notes'), { recursive: true, force: true });
     srv.kill();
   }
 });
