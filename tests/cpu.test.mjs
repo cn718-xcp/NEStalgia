@@ -316,3 +316,25 @@ test('opcode table fully populated (256 entries)', () => {
   for (let i = 0; i < 256; i++) if (!TABLE[i]) missing++;
   eq(missing, 0);
 });
+
+test('illegal RMW (d),y opcodes take fixed 8 cycles even across a page', () => {
+  // regression: izy-mode RMW illegals picked up a spurious +1 read penalty
+  for (const [op, name] of [[0x13, 'SLO'], [0x33, 'RLA'], [0x53, 'SRE'], [0x73, 'RRA'], [0xD3, 'DCP'], [0xF3, 'ISB']]) {
+    const { bus, cpu } = make([op, 0x40]); // OP ($40),Y
+    bus.ram[0x40] = 0xFF; bus.ram[0x41] = 0x10; // pointer $10FF
+    cpu.Y = 0x01; // ($10FF)+1 = $1100 → page crossed
+    const c0 = cpu.cycles;
+    cpu.step();
+    eq(cpu.cycles - c0, 8, `${name} (d),y crossing = 8`);
+  }
+});
+
+test('true read illegals via (d),y keep the page-cross penalty', () => {
+  // control group: LAX (d),y is a read — 5 base + 1 penalty
+  const { bus, cpu } = make([0xB3, 0x40]);
+  bus.ram[0x40] = 0xFF; bus.ram[0x41] = 0x10;
+  cpu.Y = 0x01;
+  const c0 = cpu.cycles;
+  cpu.step();
+  eq(cpu.cycles - c0, 6, 'LAX (d),y crossing = 6');
+});

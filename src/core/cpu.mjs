@@ -497,3 +497,6 @@ for (let i = 0; i < 256; i++) {
   const e = TABLE[i];
   if (e) e[4] = e[3] || READ_MODES.has(e[1]);
 }
+// RMW (d),y illegals run a fixed 8 cycles on real hardware — the izy mode
+// would otherwise pick up a spurious +1 read penalty on a page cross
+for (const op of [0x13, 0x33, 0x53, 0x73, 0xD3, 0xF3]) TABLE[op][4] = false;
